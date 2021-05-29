@@ -19,9 +19,13 @@ Financial History
 
 def atualizar_dados():
 
-    st.write('Stashing o git. O webapp deve estar atualizado em instantes.')
-    subprocess.run(["git", "stash", "-u"])
-    st.write('Pronto!')
+    att = st.button('Atualizar os dados')
+
+    if att:
+
+        st.write('Stashing o git. O webapp deve estar atualizado em instantes.')
+        subprocess.run(["git", "stash", "-u"])
+        st.write('Pronto!')
 
 def carregar_dados():
 
