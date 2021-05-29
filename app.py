@@ -89,7 +89,7 @@ def cadastrar():
 
         df.to_csv('sheets/data.csv', index=False)
 
-        st.write(f'Movimentação (ID {len(df)} cadastrada!)')
+        st.write(f'Movimentação (ID {len(df)-1}) cadastrada!')
 
 def selecionar_opcoes():
 
