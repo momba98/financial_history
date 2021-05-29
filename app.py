@@ -137,8 +137,6 @@ def publicar_dados():
     st.write('Pronto!')
 
 
-atualizar_dados()
-
 carregar_dados() #carregue ou crie os dados
 
 selecionar_opcoes()
