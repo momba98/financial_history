@@ -95,7 +95,7 @@ def selecionar_opcoes():
     if opcoes_primarias == 'Atualizar dados':
         atualizar_dados()
 
-    if opcoes_primarias == 'Cadastrar uma movimentação':
+    elif opcoes_primarias == 'Cadastrar uma movimentação':
         cadastrar()
 
     elif opcoes_primarias == 'Excluir uma movimentação':
