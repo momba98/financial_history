@@ -16,6 +16,14 @@ Financial History
 
 """)
 
+@st.cache()
+def atualizar_dados():
+    #st.write('Pulling o git. O webapp deve estar atualizado em instantes.')
+
+    subprocess.run(["git", "pull", "origin", 'master'])
+
+    #st.write('Pronto!')
+
 def carregar_dados():
 
     global df
@@ -126,6 +134,8 @@ def publicar_dados():
 
     st.write('Pronto!')
 
+
+atualizar_dados()
 
 carregar_dados() #carregue ou crie os dados
 
