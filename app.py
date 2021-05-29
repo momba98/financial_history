@@ -118,7 +118,13 @@ def excluir():
 
 def publicar_dados():
 
-    subprocess.call(['publicador.bat'])
+    st.write('Dando commit no git. O webapp deve estar atualizado em instantes.')
+
+    subprocess.run(["git", "add", "*"])
+    subprocess.run(["git", "commit", "-m", f"{date.today()}"])
+    subprocess.run(["git", "push"])
+
+    st.write('Pronto!')
 
 
 carregar_dados() #carregue ou crie os dados
