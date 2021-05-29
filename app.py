@@ -19,7 +19,7 @@ Financial History
 
 def atualizar_dados():
 
-    att = st.button('Atualizar os dados')
+    att = st.button('Atualizar')
 
     if att:
 
