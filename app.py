@@ -89,11 +89,13 @@ def cadastrar():
 
         df.to_csv('sheets/data.csv', index=False)
 
+        st.write(f'Movimentação (ID {len(df)} cadastrada!)')
+
 def selecionar_opcoes():
 
     opcoes_primarias = st.selectbox(
         label = 'O que você deseja fazer?',
-        options = ('', 'Atualizar dados','Cadastrar uma movimentação', 'Excluir uma movimentação', 'Publicar dados'),
+        options = ('Selecione uma opção', 'Atualizar dados','Cadastrar uma movimentação', 'Excluir uma movimentação', 'Publicar dados'),
         )
 
     if opcoes_primarias == 'Atualizar dados':
