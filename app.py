@@ -16,13 +16,12 @@ Financial History
 
 """)
 
-@st.cache()
+
 def atualizar_dados():
-    #st.write('Pulling o git. O webapp deve estar atualizado em instantes.')
 
+    st.write('Stashing o git. O webapp deve estar atualizado em instantes.')
     subprocess.run(["git", "stash", "-u"])
-
-    #st.write('Pronto!')
+    st.write('Pronto!')
 
 def carregar_dados():
 
@@ -90,8 +89,11 @@ def selecionar_opcoes():
 
     opcoes_primarias = st.selectbox(
         label = 'O que você deseja fazer?',
-        options = ('','Cadastrar uma movimentação', 'Excluir uma movimentação', 'Publicar dados'),
+        options = ('', 'Atualizar dados','Cadastrar uma movimentação', 'Excluir uma movimentação', 'Publicar dados'),
         )
+
+    if opcoes_primarias == 'Atualizar dados':
+        atualizar_dados()
 
     if opcoes_primarias == 'Cadastrar uma movimentação':
         cadastrar()
