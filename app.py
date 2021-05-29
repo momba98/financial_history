@@ -20,7 +20,7 @@ Financial History
 def atualizar_dados():
     #st.write('Pulling o git. O webapp deve estar atualizado em instantes.')
 
-    subprocess.run(["git", "pull", "origin", 'master'])
+    subprocess.run(["git", "stash", "-u"])
 
     #st.write('Pronto!')
 
