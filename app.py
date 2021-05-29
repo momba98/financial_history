@@ -111,7 +111,7 @@ def excluir():
 
     carregar_dados()
 
-    index_para_excluir = st.text_input(label='Indique a ID da linha a ser excluída:')
+    index_para_excluir = st.text_input(label='Indique a ID da linha a ser excluída:', value='0')
 
     index_para_excluir = int(index_para_excluir)
 
