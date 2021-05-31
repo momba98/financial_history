@@ -17,7 +17,6 @@ Financial History
 
 """)
 
-
 def atualizar_dados():
 
     att = st.button('Atualizar')
@@ -42,11 +41,20 @@ def carregar_dados():
                                     'Instituição Financeira',
                                     'Provedor',
                                     'Descrição',
+                                    'Parcelamento',
                                     ])
 
         file.to_csv('sheets/data.csv', index=False) #crie este arquivo
 
-    df = pd.read_csv('sheets/data.csv') #e então carregue este arquivo
+    data_parser = lambda x: pd.datetime.strptime(x[:10], '%Y-%m-%d')
+
+    df = pd.read_csv('sheets/data.csv', parse_dates=['Data','Data Cadastro'],date_parser=data_parser) #e então carregue este arquivo
+
+    try:
+        df['Data'] = df['Data'].dt.date
+        df['Data Cadastro'] = df['Data Cadastro'].dt.date
+    except:
+        pass
 
 def mostrar_dados():
 
@@ -61,7 +69,7 @@ def mostrar_dados():
             st.write(df) #mostre que eles estão corretos
 
         else:
-            st.write(df.drop('Data Cadastro', axis=1))
+            st.dataframe(df.drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
 def cadastrar():
 
@@ -118,7 +126,7 @@ def cadastrar():
 
             df.to_csv('sheets/data.csv', index=False)
 
-            st.write(f'Movimentação (ID {ID}) cadastrada!')
+            st.success(f'Movimentação (ID {ID}) cadastrada!')
 
         elif frequencia == 'Múltipla Permanente': #se for mensalidade, tenho que fazer algumas modificações nas info:
 
@@ -149,7 +157,7 @@ def cadastrar():
 
             df.to_csv('sheets/data.csv', index=False)
 
-            st.write(f'Movimentação (ID {ID}) cadastrada!')
+            st.success(f'Movimentação (ID {ID}) cadastrada!')
 
 
         else:
@@ -173,7 +181,7 @@ def cadastrar():
 
             df.to_csv('sheets/data.csv', index=False)
 
-            st.write(f'Movimentação (ID {ID}) cadastrada!')
+            st.success(f'Movimentação (ID {ID}) cadastrada!')
 
 def selecionar_opcoes():
 
@@ -215,7 +223,7 @@ def excluir():
         if exclusao_retroativa:
             filtro = (df['ID'] == index_para_excluir)
         else:
-            filtro = ((df['ID'] == index_para_excluir) & (pd.to_datetime(df['Data']).dt.date >= date.today())) # q porra, única forma que funcionou
+            filtro = ((df['ID'] == index_para_excluir) & (df['Data']>= date.today())) # q porra, única forma que funcionou
 
         try:
             #excluindo uma singular
@@ -229,11 +237,11 @@ def excluir():
                  df.to_csv('sheets/data.csv', index=False)
 
             if exclusao_retroativa:
-                st.write(f'Você excluiu todas as cobranças da movimentação {index_para_excluir}')
+                st.success(f'Você excluiu todas as cobranças da movimentação {index_para_excluir}')
             else:
-                st.write(f'Você excluiu todas as cobranças futuras da movimentação {index_para_excluir}')
+                st.success(f'Você excluiu todas as cobranças futuras da movimentação {index_para_excluir}')
         except:
-            st.write('Não foi possível encontrar a linha desejada! Cheque novamente o índice.')
+            st.error('A movimentação já foi liquidada (aconteceu antes de hoje) ou não foi possível encontrar a linha desejada!')
 
 def publicar_dados():
 
@@ -245,8 +253,77 @@ def publicar_dados():
 
     st.write('Pronto!')
 
-carregar_dados() #carregue ou crie os dados
+def dados_com_filtros():
 
-selecionar_opcoes()
+    opcao_de_filtro = st.selectbox('Qual dado você deseja filtrar?', ['Sem filtro', 'Datas', 'Fluxo'])
 
-mostrar_dados()
+    if opcao_de_filtro == 'Datas':
+
+        tipo_data = st.selectbox('Selecione a data a ser filtrada:', ['Cadastro', 'Financeira'])
+
+        if tipo_data == 'Cadastro':
+            a_data_e = 'Data Cadastro'
+        else:
+            a_data_e = 'Data'
+
+        operador = st.selectbox('Selecione o operador matemático:', ['>=', '=', '<='])
+
+        data_filtrada = st.date_input(label='Data para filtrar: ')
+
+        if operador == '>=':
+            filtro = (df[a_data_e] >= data_filtrada) # q porra, única forma que funcionou
+
+        elif operador == '=':
+            filtro = (df[a_data_e] == data_filtrada)
+
+        elif operador == '<=':
+            filtro = (df[a_data_e] <= data_filtrada)
+
+        filtrar = st.button('Filtrar')
+
+        if filtrar:
+
+            st.table(df[filtro].drop(['Data Cadastro', 'Parcelamento'], axis=1))
+
+    elif opcao_de_filtro == 'Fluxo':
+
+        operador = st.selectbox('Selecione o fluxo desejado:', ['Entrada', 'Saída'])
+
+        filtro = (df['Fluxo'] == operador)
+
+        filtrar = st.button('Filtrar')
+
+        if filtrar:
+
+            st.table(df[filtro].drop(['Data Cadastro', 'Parcelamento'], axis=1))
+
+    else:
+
+        filtrar = st.button('Filtrar')
+
+        if filtrar:
+
+            st.table(df.drop(['Data Cadastro', 'Parcelamento'], axis=1))
+
+
+menu = st.sidebar.selectbox('Escolha entre as oções:', ['Modificar os dados', 'Visualizar os dados'])
+
+if menu == 'Modificar os dados':
+
+    carregar_dados() #carregue ou crie os dados
+
+    selecionar_opcoes()
+
+    mostrar_dados()
+
+elif menu == 'Visualizar os dados':
+
+    carregar_dados()
+
+    opcoes_secundarias = st.selectbox(
+        label = 'O que você deseja visualizar?',
+        options = ('Selecione uma opção', 'Dados com filtros', 'Fluxo de caixa', 'Estado futuro'),
+        )
+
+    if opcoes_secundarias == 'Dados com filtros':
+        dados_com_filtros()
