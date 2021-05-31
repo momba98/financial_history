@@ -8,6 +8,8 @@ import os
 import xlrd
 import numpy as np
 import subprocess
+from bokeh.plotting import figure
+
 
 st.set_page_config(page_title='Financial History', page_icon="https://static.streamlit.io/examples/cat.jpg", layout='centered', initial_sidebar_state='auto')
 
@@ -317,6 +319,21 @@ def dados_com_filtros():
 
             st.table(df.drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
+def fluxo_de_caixa():
+
+     x = df['Data']
+     y = df['Valor']
+
+     p = figure(
+         title='simple line example',
+         x_axis_label='x',
+         x_axis_type='datetime',
+         y_axis_label='y')
+
+     p.vbar(x, bottom=0, top=y, legend_label='Trend', line_width=30)
+
+     st.bokeh_chart(p, use_container_width=True)
+
 
 menu = st.sidebar.selectbox('Escolha entre as oções:', ['Modificar os dados', 'Visualizar os dados'])
 
@@ -339,3 +356,6 @@ elif menu == 'Visualizar os dados':
 
     if opcoes_secundarias == 'Dados com filtros':
         dados_com_filtros()
+
+    if opcoes_secundarias == 'Fluxo de caixa':
+        fluxo_de_caixa()
