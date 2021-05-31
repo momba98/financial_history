@@ -1,9 +1,3 @@
-Data Cadastro,Data Financeira,Fluxo,Frequência,Valor,Instituição Financeira,Provedor,Descrição
-2021-05-29,2021-05-29,Entrada,Múltipla Temporária (p.ex: parcelamento),0.0,,,
-2021-05-29,2021-05-29,Saída,Singular (p.ex: jantar),0.0,,,
-2021-05-29,2021-05-29,Saída,Singular (p.ex: jantar),0.0,,,isto é um teste!!
-2021-05-29,2021-05-29,Saída,Singular (p.ex: jantar),14.99,Nubank,Uber,Ida para a dani
-2021-05-29,2021-05-29,Saída,Singular (p.ex: jantar),17.65,Nubank,Uber,Volta da dani
-2021-05-29,2021-05-29,Entrada,Singular (p.ex: jantar),123.0,Hipercard,qwe,e
-2021-05-29,2021-05-29,Saída,Singular (p.ex: jantar),14.39,Nubank,Uber,Ida para a dani
-2021-05-29,2021-05-29,,,0.0,,,
+ID,Data Cadastro,Data,Fluxo,Frequência,Valor,Instituição Financeira,Provedor,Descrição,Parcelamento
+0,2021-05-31,2021-05-18,Saída,Singular,59.96,Nubank,Sushito,Janta com a mor,
+1,2021-05-31,2021-05-18,Saída,Múltipla Temporária,133.2,Nubank,Loja de móveis,Armário da mor,1.0
