@@ -171,7 +171,7 @@ def cadastrar():
                             'Data': data_financeira,
                             'Fluxo': fluxo,
                             'Frequência' : frequencia,
-                            'Valor' : valor,
+                            'Valor' : valor if fluxo=='Entrada' else -valor,
                             'Instituição Financeira' : instituicao_financeira,
                             'Provedor' : provedor,
                             'Descrição': descricao,
@@ -223,7 +223,7 @@ def excluir():
         if exclusao_retroativa:
             filtro = (df['ID'] == index_para_excluir)
         else:
-            filtro = ((df['ID'] == index_para_excluir) & (df['Data']>= date.today())) # q porra, única forma que funcionou
+            filtro = ((df['ID'] == index_para_excluir) & (df['Data']>= date.today()))
 
         try:
             #excluindo uma singular
@@ -255,7 +255,7 @@ def publicar_dados():
 
 def dados_com_filtros():
 
-    opcao_de_filtro = st.selectbox('Qual dado você deseja filtrar?', ['Sem filtro', 'Datas', 'Fluxo'])
+    opcao_de_filtro = st.selectbox('Qual dado você deseja filtrar?', ['Sem filtro', 'Datas', 'Fluxo', 'Provedor'])
 
     if opcao_de_filtro == 'Datas':
 
@@ -271,7 +271,7 @@ def dados_com_filtros():
         data_filtrada = st.date_input(label='Data para filtrar: ')
 
         if operador == '>=':
-            filtro = (df[a_data_e] >= data_filtrada) # q porra, única forma que funcionou
+            filtro = (df[a_data_e] >= data_filtrada)
 
         elif operador == '=':
             filtro = (df[a_data_e] == data_filtrada)
@@ -290,6 +290,18 @@ def dados_com_filtros():
         operador = st.selectbox('Selecione o fluxo desejado:', ['Entrada', 'Saída'])
 
         filtro = (df['Fluxo'] == operador)
+
+        filtrar = st.button('Filtrar')
+
+        if filtrar:
+
+            st.table(df[filtro].drop(['Data Cadastro', 'Parcelamento'], axis=1))
+
+    elif opcao_de_filtro == 'Provedor':
+
+        operador = st.selectbox('Selecione o fluxo desejado:', df['Provedor'].unique())
+
+        filtro = (df['Provedor'] == operador)
 
         filtrar = st.button('Filtrar')
 
@@ -322,7 +334,7 @@ elif menu == 'Visualizar os dados':
 
     opcoes_secundarias = st.selectbox(
         label = 'O que você deseja visualizar?',
-        options = ('Selecione uma opção', 'Dados com filtros', 'Fluxo de caixa', 'Estado futuro'),
+        options = ('Selecione uma opção', 'Dados com filtros', 'Fluxo de caixa', 'Métricas'),
         )
 
     if opcoes_secundarias == 'Dados com filtros':
