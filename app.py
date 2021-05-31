@@ -81,24 +81,85 @@ def cadastrar():
 
     st.header("Cadastre uma movimentação")
 
+    #formulário
+
     data_financeira = st.date_input(label='Data da movimentação: ')
-    fluxo = st.selectbox(label='Fluxo da movimentação: ', options=['','Entrada', 'Saída'])
-    frequencia = st.selectbox(label='Frequência da movimentação: ', options=['','Singular', 'Múltipla Temporária', 'Múltipla Permanente'])
+
+    fluxo = st.selectbox(label='Fluxo da movimentação: ', options=['','Entrada', 'Saída', 'Transferência'])
+
+    frequencia = st.selectbox(label='Frequência da movimentação: ',
+                              options=['','Singular', 'Múltipla Temporária', 'Múltipla Permanente'] if fluxo!='Transferência' else ['Singular'])
+
     if frequencia == 'Múltipla Temporária':
         parcelamento = st.text_input(label='Indique em quantas vezes o valor foi parcelado:', value='0')
         parcelamento = int(parcelamento)
+
     valor = st.number_input(label='Valor (R$):')
-    instituicao_financeira = st.selectbox(label='Instituição Financeira (onde a quantia foi ou estava?)', options=['','Nubank', 'Inter', 'C6', 'PicPay', 'Hipercard', 'Cofre'])
-    provedor = st.text_input(label='Provedor (quem foi o responsável pela movimentação? Nelogica, pai, mãe etc.):')
-    descricao = st.text_input(label='Descrição:')
+
+    instituicao_financeira = st.selectbox(label='Instituição Financeira (onde a quantia foi ou estava?)', options=['','Nubank', 'Inter', 'C6', 'PicPay', 'Hipercard', 'B3', 'Cofre'])
+
+    if fluxo != 'Transferência':
+
+        provedor = st.text_input(label='Provedor (quem foi o responsável pela movimentação? Nelogica, pai, mãe etc.):')
+
+        descricao = st.text_input(label='Descrição:')
+
+    else:
+
+        instituicao_financeira_2 = st.selectbox(label='Para qual Instituição Financeira o valor foi destiando?', options=['','Nubank', 'Inter', 'C6', 'PicPay', 'Hipercard', 'B3', 'Cofre'])
+
 
     data_cadastro = date.today()
+
+    # botão cadastrar
 
     cadastrar = st.button('Cadastrar')
 
     if cadastrar:
 
-        if frequencia == 'Múltipla Temporária': #se for parcelamento, tenho que fazer algumas modificações nas info:
+        if fluxo == 'Transferência': #se for Transferência, tenho que fazer algumas modificações nas info (ficou feio, logo arrumo):
+
+            provedor = None
+            descricao = None
+
+            #saída de um banco para outro
+
+            if len(df['ID'].dropna()) == 0:
+                ID = 0
+            else:
+                ID = df['ID'].values[-1] + 1
+
+            df = df.append({'Data Cadastro': data_cadastro,
+                            'Data': data_financeira,
+                            'Fluxo': fluxo,
+                            'Frequência' : frequencia,
+                            'Valor' : -valor,
+                            'Instituição Financeira' : instituicao_financeira,
+                            'Descrição': f'Saída {instituicao_financeira} para {instituicao_financeira_2}',
+                            'ID': ID
+                            },
+                            ignore_index=True)
+
+            df.to_csv('sheets/data.csv', index=False)
+
+            #chegada do um banco para o outro
+
+            df = df.append({'Data Cadastro': data_cadastro,
+                            'Data': data_financeira,
+                            'Fluxo': fluxo,
+                            'Frequência' : frequencia,
+                            'Valor' : +valor,
+                            'Instituição Financeira' : instituicao_financeira_2,
+                            'Descrição': f'Entrada {instituicao_financeira_2} de {instituicao_financeira}',
+                            'ID': ID
+                            },
+                            ignore_index=True)
+
+            df.to_csv('sheets/data.csv', index=False)
+
+            st.success(f'Movimentação (ID {ID}) cadastrada!')
+
+        elif frequencia == 'Múltipla Temporária': #se for parcelamento, tenho que fazer algumas modificações nas info:
 
             #olhar para o meu df e ver qual é o último parcelamento, nomear este como o último + 1
 
@@ -116,7 +177,7 @@ def cadastrar():
                                 'Fluxo': fluxo,
                                 'Frequência' : frequencia,
                                 'Parcelamento' : registro,
-                                'Valor' : valor/parcelamento,
+                                'Valor' : valor/parcelamento if fluxo=='Entrada' else -valor/parcelamento,
                                 'Instituição Financeira' : instituicao_financeira,
                                 'Provedor' : provedor,
                                 'Descrição': descricao,
@@ -147,7 +208,7 @@ def cadastrar():
                                 'Data': data_financeira_trabalhada,
                                 'Fluxo': fluxo,
                                 'Frequência' : frequencia,
-                                'Valor' : valor,
+                                'Valor' : valor if fluxo=='Entrada' else -valor,
                                 'Instituição Financeira' : instituicao_financeira,
                                 'Provedor' : provedor,
                                 'Descrição': descricao,
@@ -162,7 +223,7 @@ def cadastrar():
             st.success(f'Movimentação (ID {ID}) cadastrada!')
 
 
-        else:
+        else: #se for um registro singular:
 
             if len(df['ID'].dropna()) == 0:
                 ID = 0
@@ -289,7 +350,7 @@ def dados_com_filtros():
 
     elif opcao_de_filtro == 'Fluxo':
 
-        operador = st.selectbox('Selecione o fluxo desejado:', ['Entrada', 'Saída'])
+        operador = st.selectbox('Selecione o fluxo desejado:', ['Entrada', 'Saída', 'Transferência'])
 
         filtro = (df['Fluxo'] == operador)
 
