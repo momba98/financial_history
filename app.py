@@ -96,11 +96,12 @@ def cadastrar():
 
     valor = st.number_input(label='Valor (R$):')
 
-    instituicao_financeira = st.selectbox(label='Instituição Financeira (onde a quantia foi ou estava?)', options=['','Nubank', 'Inter', 'C6', 'PicPay', 'Hipercard', 'B3', 'Cofre'])
+    instituicao_financeira = st.selectbox(label='Instituição Financeira (onde a quantia foi ou estava?)', options=['','Nubank', 'Inter', 'C6', 'PicPay', 'Hipercard', 'B3', 'Alelo', 'Carteira'])
 
     if fluxo != 'Transferência':
 
-        provedor = st.text_input(label='Provedor (quem foi o responsável pela movimentação? Nelogica, pai, mãe etc.):')
+        provedor = st.selectbox(label = 'Provedor (quem foi o responsável pela movimentação? Nelogica, pai, mãe etc.):',
+                                options = ['', 'Trabalho', 'Outros'] if fluxo == 'Entrada' else ['', 'Alimentação', 'Gasolina', 'Lazer', 'Vestiário', 'Transporte', 'Saúde', 'Estudos', 'Casa', 'Outros'])
 
         descricao = st.text_input(label='Descrição:')
 
@@ -202,7 +203,7 @@ def cadastrar():
 
             ano_em_meses = 12
 
-            for registro in range(1,(ano_em_meses*10)+1,1): #vou cadastrar para até 10 anos para frente
+            for registro in range(1,(ano_em_meses*3)+1,1): #vou cadastrar para até 3 anos para frente
 
                 df = df.append({'Data Cadastro': data_cadastro,
                                 'Data': data_financeira_trabalhada,
@@ -249,7 +250,7 @@ def cadastrar():
 def selecionar_opcoes():
 
     opcoes_primarias = st.selectbox(
-        label = 'O que você deseja fazer?',
+        label = 'O que você deseja modificar?',
         options = ('Selecione uma opção', 'Atualizar dados','Cadastrar uma movimentação', 'Excluir uma movimentação', 'Publicar dados'),
         )
 
@@ -380,7 +381,136 @@ def dados_com_filtros():
 
             st.table(df.drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
+def conferir_cadastros():
+
+    data_registrada = st.selectbox('Selecione a data de cadastro:', np.append(df['Data Cadastro'].unique(), values='Sem Filtro'))
+
+    if data_registrada == 'Sem Filtro':
+        filtro = (df == df)
+    else:
+        filtro = (df['Data Cadastro'] == data_registrada)
+
+    filtrar = st.button('Filtrar')
+
+    if filtrar:
+
+        contador = 0
+
+        for index, row in df[filtro].drop_duplicates(subset=['ID']).iterrows(): #itrar sobre todos os itens únicos cadastrados no meu extrato
+
+            if row['Fluxo'] == 'Entrada':
+
+                if row['Frequência'] == 'Singular':
+
+                    st.markdown(
+                            """
+                            {} - Movimentação esporádica de <span style="color:rgb(6, 191, 0);font-size:larger">R$ {}</span> com data de crédito {} de {} de {} na conta {}.
+                            """.format(
+                             contador,
+                             row['Valor'],
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.unique()[0],
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().unique()[0],
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.unique()[0],
+                             row['Instituição Financeira']
+                             ),
+                             True
+                        )
+
+                elif row['Frequência'] == 'Múltipla Temporária':
+
+                    st.markdown(
+                            """
+                            {} - Movimentação parcelada de <span style="color:rgb(6, 191, 0);font-size:larger">R$ {}</span> em {} vezes, creditado todo dia {} (de {}/{} até {}/{}) na conta {}.
+                            """.format(
+                             contador,
+                             row['Valor']*(df[df['ID'] == row['ID']]['Parcelamento'].iloc[-1]), #isso é o valor vezes o número de parcelas
+                             int(df[df['ID'] == row['ID']]['Parcelamento'].iloc[-1]), #isso é o número de parcelas
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.unique()[0], #isso é o dia do mês que será creditado
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().iloc[0], #o mês que começará o crédito
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.iloc[0],
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().iloc[-1], #o mês que começará o crédito
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.iloc[-1], #e o que terminará
+                             row['Instituição Financeira']
+                             ), True
+                        )
+
+                elif row['Frequência'] == 'Múltipla Permanente':
+
+                    st.markdown(
+                            """
+                            {} - Movimentação fixa de <span style="color:rgb(6, 191, 0);font-size:larger">R$ {}</span>, creditado todo dia {} na conta {}.
+                            """.format(
+                             contador,
+                             row['Valor'], #isso é o valor vezes o número de parcelas
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.unique()[0],
+                             row['Instituição Financeira']
+                             ), True
+                        )
+
+
+            elif row['Fluxo'] == 'Saída':
+
+                if row['Frequência'] == 'Singular':
+
+                    st.markdown(
+                            """
+                            {} - Movimentação esporádica de <span style="color:rgb(255, 15, 0);font-size:larger">R$ {}</span> com data de débito {} de {} de {} da conta {}.
+                            """.format(
+                             contador,
+                             row['Valor'],
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.unique()[0],
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().unique()[0],
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.unique()[0],
+                             row['Instituição Financeira']
+                             ),
+                             True
+                        )
+
+                elif row['Frequência'] == 'Múltipla Temporária':
+
+                    st.markdown(
+                            """
+                            {} - Movimentação parcelada de <span style="color:rgb(255, 15, 0);font-size:larger">R$ {}</span> em {} vezes, debitado todo dia {} (de {}/{} até {}/{}) da conta {}.
+                            """.format(
+                             contador,
+                             row['Valor']*(df[df['ID'] == row['ID']]['Parcelamento'].iloc[-1]), #isso é o valor vezes o número de parcelas
+                             int(df[df['ID'] == row['ID']]['Parcelamento'].iloc[-1]), #isso é o número de parcelas
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.unique()[0], #isso é o dia do mês que será creditado
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().iloc[0], #o mês que começará o crédito
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.iloc[0],
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().iloc[-1], #o mês que começará o crédito
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.iloc[-1], #e o que terminará
+                             row['Instituição Financeira']
+                             ), True
+                        )
+
+                elif row['Frequência'] == 'Múltipla Permanente':
+
+                    st.markdown(
+                            """
+                            {} - Movimentação fixa de <span style="color:rgb(255, 15, 0);font-size:larger">R$ {}</span>, debitado todo dia {} da conta {}.
+                            """.format(
+                             contador,
+                             row['Valor'], #isso é o valor vezes o número de parcelas
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.unique()[0],
+                             row['Instituição Financeira']
+                             ), True
+                        )
+
+            elif row['Fluxo'] == 'Transferência':
+
+                st.write('Você cadastrou uma {} {} ({}) de {} que será debitada/creditada no dia {} da conta {}.'.format(
+                        row['Fluxo'],row['Frequência'],row['Provedor'],row['Valor'],row['Data'],row['Instituição Financeira']))
+            else:
+                pass
+
+            contador += 1
+
 def fluxo_de_caixa():
+
+    #country_gp = df.groupby(['Country']) #podemos transformar esse objeto numa variável
+    #country_gp.get_group('United States') #e buscar o grupo que se refere aos USA.
+    #df.resample('M', on='coluna_que_tem_data').sum() o sum funciona?
 
      x = df['Data']
      y = df['Valor']
@@ -412,11 +542,26 @@ elif menu == 'Visualizar os dados':
 
     opcoes_secundarias = st.selectbox(
         label = 'O que você deseja visualizar?',
-        options = ('Selecione uma opção', 'Dados com filtros', 'Fluxo de caixa', 'Métricas'),
+        options = ('Selecione uma opção', 'Conferir cadastros', 'Dados com filtros', 'Fluxo de caixa', 'Métricas'),
         )
+
+    if opcoes_secundarias == 'Conferir cadastros':
+        conferir_cadastros()
 
     if opcoes_secundarias == 'Dados com filtros':
         dados_com_filtros()
 
     if opcoes_secundarias == 'Fluxo de caixa':
         fluxo_de_caixa()
+
+
+
+df['Data'] = pd.to_datetime(df['Data']) #NÃO funciona com date apenas, precisa ser datetime... putarias do pandas;
+
+#st.write(df.resample('M', on='Data').sum())
+
+#a=df.resample('M', on='Data').sum()
+
+#a = df.groupby(['Data','Fluxo','Provedor'])['Valor'].sum()
+
+st.write(df.groupby([pd.Grouper(key='Data',freq='M'), 'Fluxo', 'Provedor'])['Valor'].sum()) #o grouper é o responsável pelo resample no groupby... complexo!
