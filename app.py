@@ -552,88 +552,146 @@ def fluxo_de_caixa():
 
     df['Data'] = pd.to_datetime(df['Data']) #NÃO funciona com date apenas, precisa ser datetime... putarias do pandas;
 
-    ano = st.selectbox('Computar os dados para o ano:', df['Data'].dt.year.unique())
+    range = st.radio('Selecione o range do Fluxo de Caixa:', ['Mensal', 'Anual'])
 
-    st.markdown(f'## FLUXO DE CAIXA - {ano}')
-
-    m_indx = [('Entrada', 'Trabalho'),
-              ('Entrada', 'Outros'),
-              ('Saída', 'Alimentação'),
-              ('Saída', 'Gasolina'),
-              ('Saída', 'Lazer'),
-              ('Saída', 'Vestiário'),
-              ('Saída', 'Transporte'),
-              ('Saída', 'Saúde'),
-              ('Saída', 'Estudos'),
-              ('Saída', 'Casa'),
-              ('Saída', 'Outros'),
-              ('', 'Total'),
-              ]
-
-    meses = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-
-    tabela_fluxo = pd.DataFrame(data=None,
-        index=pd.MultiIndex.from_tuples(m_indx, names=["Fluxo", "Provedor"]),
-        columns=meses
-    )
+    m_indx = [
+        ('Entrada', 'Trabalho'),
+        ('Entrada', 'Outros'),
+        ('Saída', 'Alimentação'),
+        ('Saída', 'Gasolina'),
+        ('Saída', 'Lazer'),
+        ('Saída', 'Vestiário'),
+        ('Saída', 'Transporte'),
+        ('Saída', 'Saúde'),
+        ('Saída', 'Estudos'),
+        ('Saída', 'Casa'),
+        ('Saída', 'Outros'),
+        ('', 'Total')
+    ]
 
     df['Data'] = pd.to_datetime(df['Data']) #NÃO funciona com date apenas, precisa ser datetime... putarias do pandas;
 
-    tabela_gp = df.groupby([pd.Grouper(key='Data',freq='M'), 'Fluxo', 'Provedor'])['Valor'].sum() #o grouper é o responsável pelo resample no groupby... complexo!
+    #independende do range escolhido, preciso do fluxo de caixa anual (mensal necessita saldos dos anos prévios)
 
-    for mes in tabela_fluxo.columns:
-        for fluxo_prov in tabela_fluxo.index:
+    tabela_fluxo_anual = pd.DataFrame(data=None,
+        index=pd.MultiIndex.from_tuples(m_indx, names=["Fluxo", "Provedor"]),
+        columns=df['Data'].dt.year.unique()
+    )
+
+    tabela_gp_anual = df.groupby(
+        [pd.Grouper(key='Data',freq='Y'), 'Fluxo', 'Provedor']
+        )['Valor'].sum() #o grouper é o responsável pelo resample no groupby... complexo!
+
+    for ano in tabela_fluxo_anual.columns:
+        for fluxo_prov in tabela_fluxo_anual.index:
             try:
-                tabela_fluxo.loc[fluxo_prov,mes] = tabela_gp[(tabela_gp.index.get_level_values(0).month_name() == mes) &
-                                                             (tabela_gp.index.get_level_values(0).year == ano) &
-                                                             (tabela_gp.index.get_level_values(1) == fluxo_prov[0]) &
-                                                             (tabela_gp.index.get_level_values(2) == fluxo_prov[1])
+                tabela_fluxo_anual.loc[fluxo_prov,ano] = tabela_gp_anual[
+                                                             (tabela_gp_anual.index.get_level_values(0).year == ano) &
+                                                             (tabela_gp_anual.index.get_level_values(1) == fluxo_prov[0]) &
+                                                             (tabela_gp_anual.index.get_level_values(2) == fluxo_prov[1])
                                                              ].values[0]
             except:
-                tabela_fluxo.loc[fluxo_prov,mes] = 0
+                tabela_fluxo_anual.loc[fluxo_prov,ano] = 0
 
-        tabela_fluxo.loc[('', 'Total'),mes] = tabela_fluxo[mes].sum()
+        tabela_fluxo_anual.loc[('', 'Total'),ano] = tabela_fluxo_anual[ano].sum()
 
-    #tabela_fluxo.rename(dict(zip(tabela_fluxo.columns, [a[:3] for a in tabela_fluxo.columns])), axis='columns', inplace=True)
+    tabela_fluxo_anual.loc[('','Total')] = tabela_fluxo_anual.loc[('','Total')].cumsum()
 
-    st.dataframe(tabela_fluxo.applymap('{:,.2f}'.format), height=1000)
+    saldos_previos = tabela_fluxo_anual.loc[('', 'Total')].to_dict()
 
-    #sobre o gráfico
+    if range == 'Anual':
 
-    grafico = df.groupby([pd.Grouper(key='Data',freq='M'), 'Fluxo'])['Valor'].sum()
+        st.markdown(f'## FLUXO DE CAIXA ANUAL')
 
-    group_by_do_ganhos = tabela_fluxo.loc[('Entrada','Trabalho')]+tabela_fluxo.loc[('Entrada','Outros')] #putaria... mas é o que deu
+        table = tabela_fluxo_anual
+        x_axis = df['Data'].dt.year.unique().astype('str')
+        line = table.loc[('','Total')]
 
-    group_by_do_gastos = (tabela_fluxo.loc[('Saída','Alimentação')]+
-                         tabela_fluxo.loc[('Saída','Gasolina')]+
-                         tabela_fluxo.loc[('Saída','Lazer')]+
-                         tabela_fluxo.loc[('Saída','Vestiário')]+
-                         tabela_fluxo.loc[('Saída','Transporte')]+
-                         tabela_fluxo.loc[('Saída','Saúde')]+
-                         tabela_fluxo.loc[('Saída','Estudos')]+
-                         tabela_fluxo.loc[('Saída','Casa')]+
-                         tabela_fluxo.loc[('Saída','Outros')])
+    elif range == 'Mensal':
 
+        ano = st.selectbox('Computar os dados para o ano:', df['Data'].dt.year.unique())
 
-    p = figure(x_range=meses,toolbar_location=None,height=400)
+        st.markdown(f'## FLUXO DE CAIXA - {ano}')
+
+        meses = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+        tabela_fluxo_mensal = pd.DataFrame(data=None,
+            index=pd.MultiIndex.from_tuples(m_indx, names=["Fluxo", "Provedor"]),
+            columns=meses
+        )
+
+        tabela_gp_mensal = df.groupby([pd.Grouper(key='Data',freq='M'), 'Fluxo', 'Provedor'])['Valor'].sum() #o grouper é o responsável pelo resample no groupby... complexo!
+
+        for mes in tabela_fluxo_mensal.columns:
+            for fluxo_prov in tabela_fluxo_mensal.index:
+                try:
+                    tabela_fluxo_mensal.loc[fluxo_prov,mes] = tabela_gp_mensal[
+                                                                 (tabela_gp_mensal.index.get_level_values(0).month_name() == mes) &
+                                                                 (tabela_gp_mensal.index.get_level_values(0).year == ano) &
+                                                                 (tabela_gp_mensal.index.get_level_values(1) == fluxo_prov[0]) &
+                                                                 (tabela_gp_mensal.index.get_level_values(2) == fluxo_prov[1])
+                                                                 ].values[0]
+                except:
+                    tabela_fluxo_mensal.loc[fluxo_prov,mes] = 0
+
+            saldo = 0
+
+            if mes == 'January':
+                try:
+                    saldo = saldos_previos[ano-1]
+                except:
+                    pass
+
+            tabela_fluxo_mensal.loc[('', 'Total'),mes] = tabela_fluxo_mensal[mes].sum() + saldo
+
+        tabela_fluxo_mensal.loc[('','Total')] = tabela_fluxo_mensal.loc[('','Total')].cumsum()
+
+        table = tabela_fluxo_mensal
+        x_axis = meses
+        line = table.loc[('','Total')]
+
+    else:
+        pass
+
+    #tudo que é comum aos dois
+
+    acumulado = st.checkbox('Visualizar linha de saldo acumulado', True)
+
+    group_by_do_ganhos = table.loc[('Entrada','Trabalho')]+table.loc[('Entrada','Outros')] #putaria... mas é o que deu
+
+    group_by_do_gastos = (
+        table.loc[('Saída','Alimentação')]+
+        table.loc[('Saída','Gasolina')]+
+        table.loc[('Saída','Lazer')]+
+        table.loc[('Saída','Vestiário')]+
+        table.loc[('Saída','Transporte')]+
+        table.loc[('Saída','Saúde')]+
+        table.loc[('Saída','Estudos')]+
+        table.loc[('Saída','Casa')]+
+        table.loc[('Saída','Outros')]
+    )
+
+    p = figure(x_range=x_axis,toolbar_location=None,height=400)
 
     p.ray(x=[0], y=[0], color='grey', alpha=0.5, line_dash='dotted')
 
-    p.line(x=meses,
-           y=tabela_fluxo.loc[('','Total')].cumsum(), color='grey', line_width=1)
+    if acumulado:
+        p.line(x=x_axis,
+               y=line, color='grey', line_width=1)
+    else:
+        pass
 
-    p.vbar(x=meses,
+    p.vbar(x=x_axis,
            bottom=0.,
            top=group_by_do_ganhos,
            line_width=30,
            color='rgb(32, 135, 60)')
 
-    p.vbar(x=meses,
+    p.vbar(x=x_axis,
            bottom=0.,
            top=group_by_do_gastos,
            line_width=30.,
            color='rgb(135, 32, 32)')
-
 
     p.yaxis[0].ticker.desired_num_ticks = 7
     p.yaxis.major_tick_line_color = None  # turn off y-axis major ticks
@@ -643,6 +701,10 @@ def fluxo_de_caixa():
     p.yaxis.major_label_text_font_size = '12pt'
 
     st.bokeh_chart(p, use_container_width=True)
+
+    with st.beta_expander('Mostrar o extrato'):
+
+        st.dataframe(table.applymap('{:,.2f}'.format), height=1000)
 
 menu = st.sidebar.selectbox('Escolha entre as oções:', ['Modificar os dados', 'Visualizar os dados'])
 
