@@ -570,9 +570,11 @@ def fluxo_de_caixa():
               ('', 'Total'),
               ]
 
+    meses = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
     tabela_fluxo = pd.DataFrame(data=None,
         index=pd.MultiIndex.from_tuples(m_indx, names=["Fluxo", "Provedor"]),
-        columns=['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+        columns=meses
     )
 
     df['Data'] = pd.to_datetime(df['Data']) #NÃO funciona com date apenas, precisa ser datetime... putarias do pandas;
@@ -592,30 +594,55 @@ def fluxo_de_caixa():
 
         tabela_fluxo.loc[('', 'Total'),mes] = tabela_fluxo[mes].sum()
 
-    tabela_fluxo.rename(dict(zip(tabela_fluxo.columns, [a[:3] for a in tabela_fluxo.columns])), axis='columns', inplace=True)
-
-    def color_survived(val):
-        color = 'green' if val else 'red'
-        return f'background-color: {color}'
+    #tabela_fluxo.rename(dict(zip(tabela_fluxo.columns, [a[:3] for a in tabela_fluxo.columns])), axis='columns', inplace=True)
 
     st.dataframe(tabela_fluxo.applymap('{:,.2f}'.format), height=1000)
 
-def grafico():
-        """
+    #sobre o gráfico
 
-        x = df['Data']
-        y = df['Valor']
+    grafico = df.groupby([pd.Grouper(key='Data',freq='M'), 'Fluxo'])['Valor'].sum()
 
-        p = figure(
-            title='simple line example',
-            x_axis_label='x',
-            x_axis_type='datetime',
-            y_axis_label='y')
+    group_by_do_ganhos = tabela_fluxo.loc[('Entrada','Trabalho')]+tabela_fluxo.loc[('Entrada','Outros')] #putaria... mas é o que deu
 
-        p.vbar(x, bottom=0, top=y, legend_label='Trend', line_width=30)
+    group_by_do_gastos = (tabela_fluxo.loc[('Saída','Alimentação')]+
+                         tabela_fluxo.loc[('Saída','Gasolina')]+
+                         tabela_fluxo.loc[('Saída','Lazer')]+
+                         tabela_fluxo.loc[('Saída','Vestiário')]+
+                         tabela_fluxo.loc[('Saída','Transporte')]+
+                         tabela_fluxo.loc[('Saída','Saúde')]+
+                         tabela_fluxo.loc[('Saída','Estudos')]+
+                         tabela_fluxo.loc[('Saída','Casa')]+
+                         tabela_fluxo.loc[('Saída','Outros')])
 
-        st.bokeh_chart(p, use_container_width=True)
-        """
+
+    p = figure(x_range=meses,toolbar_location=None,height=400)
+
+    p.ray(x=[0], y=[0], color='grey', alpha=0.5, line_dash='dotted')
+
+    p.line(x=meses,
+           y=tabela_fluxo.loc[('','Total')].cumsum(), color='grey', line_width=1)
+
+    p.vbar(x=meses,
+           bottom=0.,
+           top=group_by_do_ganhos,
+           line_width=30,
+           color='rgb(32, 135, 60)')
+
+    p.vbar(x=meses,
+           bottom=0.,
+           top=group_by_do_gastos,
+           line_width=30.,
+           color='rgb(135, 32, 32)')
+
+
+    p.yaxis[0].ticker.desired_num_ticks = 7
+    p.yaxis.major_tick_line_color = None  # turn off y-axis major ticks
+    p.yaxis.minor_tick_line_color = None  # turn off y-axis minor ticks
+    p.outline_line_alpha = 0
+    p.xaxis.major_label_text_font_size = '12pt'
+    p.yaxis.major_label_text_font_size = '12pt'
+
+    st.bokeh_chart(p, use_container_width=True)
 
 menu = st.sidebar.selectbox('Escolha entre as oções:', ['Modificar os dados', 'Visualizar os dados'])
 
