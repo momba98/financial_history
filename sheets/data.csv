@@ -1,29 +1,4 @@
 ID,Data Cadastro,Data,Fluxo,Frequência,Valor,Instituição Financeira,Provedor,Descrição,Parcelamento
-0,2021-06-03,2021-03-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,1.0
-0,2021-06-03,2021-04-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,2.0
-0,2021-06-03,2021-05-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,3.0
-0,2021-06-03,2021-06-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,4.0
-0,2021-06-03,2021-07-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,5.0
-0,2021-06-03,2021-08-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,6.0
-0,2021-06-03,2021-09-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,7.0
-0,2021-06-03,2021-10-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,8.0
-0,2021-06-03,2021-11-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,9.0
-0,2021-06-03,2021-12-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,10.0
-0,2021-06-03,2022-01-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,11.0
-0,2021-06-03,2022-02-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,12.0
-0,2021-06-03,2022-03-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,13.0
-0,2021-06-03,2022-04-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,14.0
-0,2021-06-03,2022-05-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,15.0
-0,2021-06-03,2022-06-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,16.0
-0,2021-06-03,2022-07-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,17.0
-0,2021-06-03,2022-08-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,18.0
-0,2021-06-03,2022-09-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,19.0
-0,2021-06-03,2022-10-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,20.0
-0,2021-06-03,2022-11-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,21.0
-0,2021-06-03,2022-12-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,22.0
-0,2021-06-03,2023-01-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,23.0
-0,2021-06-03,2023-02-05,Entrada,Múltipla Temporária,10.0,Nubank,Outros,,24.0
-1,2021-06-03,2021-06-05,Entrada,Singular,124.0,Carteira,Outros,,
 2,2021-06-03,2021-07-05,Entrada,Múltipla Permanente,2883.63,Nubank,Trabalho,,
 2,2021-06-03,2021-08-05,Entrada,Múltipla Permanente,2883.63,Nubank,Trabalho,,
 2,2021-06-03,2021-09-05,Entrada,Múltipla Permanente,2883.63,Nubank,Trabalho,,
@@ -61,20 +36,6 @@ ID,Data Cadastro,Data,Fluxo,Frequência,Valor,Instituição Financeira,Provedor,
 2,2021-06-03,2024-05-05,Entrada,Múltipla Permanente,2883.63,Nubank,Trabalho,,
 2,2021-06-03,2024-06-05,Entrada,Múltipla Permanente,2883.63,Nubank,Trabalho,,
 3,2021-06-03,2021-06-30,Saída,Singular,-1954.0,Inter,Lazer,,
-4,2021-06-03,2021-06-30,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,1.0
-4,2021-06-03,2021-07-30,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,2.0
-4,2021-06-03,2021-08-30,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,3.0
-4,2021-06-03,2021-09-30,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,4.0
-4,2021-06-03,2021-10-30,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,5.0
-4,2021-06-03,2021-11-30,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,6.0
-4,2021-06-03,2021-12-30,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,7.0
-4,2021-06-03,2022-01-30,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,8.0
-4,2021-06-03,2022-02-28,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,9.0
-4,2021-06-03,2022-03-28,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,10.0
-4,2021-06-03,2022-04-28,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,11.0
-4,2021-06-03,2022-05-28,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,12.0
-4,2021-06-03,2022-06-28,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,13.0
-4,2021-06-03,2022-07-28,Saída,Múltipla Temporária,-1393.1414285714286,Inter,Lazer,,14.0
 5,2021-06-03,2021-06-30,Saída,Múltipla Permanente,-10.9,Inter,Lazer,,
 5,2021-06-03,2021-07-30,Saída,Múltipla Permanente,-10.9,Inter,Lazer,,
 5,2021-06-03,2021-08-30,Saída,Múltipla Permanente,-10.9,Inter,Lazer,,
@@ -125,7 +86,6 @@ ID,Data Cadastro,Data,Fluxo,Frequência,Valor,Instituição Financeira,Provedor,
 7,2021-06-03,2022-03-01,Saída,Múltipla Temporária,-10.0,,,,10.0
 7,2021-06-03,2022-04-01,Saída,Múltipla Temporária,-10.0,,,,11.0
 7,2021-06-03,2022-05-01,Saída,Múltipla Temporária,-10.0,,,,12.0
-8,2021-06-03,2021-06-03,Entrada,Singular,50.0,Carteira,Outros,Pai,
 9,2021-06-03,2021-06-03,Transferência,Singular,-590.0,Nubank,,Saída Nubank para B3,
 9,2021-06-03,2021-06-03,Transferência,Singular,590.0,B3,,Entrada B3 de Nubank,
 10,2021-06-03,2021-06-03,Entrada,Múltipla Temporária,11.065333333333333,,,1,1.0

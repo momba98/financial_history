@@ -57,7 +57,6 @@ def carregar_dados():
     try:
         df['Data'] = df['Data'].dt.date
         df['Data Cadastro'] = df['Data Cadastro'].dt.date
-        df['Valor'] = df['Valor'].map('{:,.2f}'.format)
     except:
         pass
 
@@ -71,9 +70,13 @@ def mostrar_dados():
 
         if mostrar_tudo:
 
+            df['Valor'] = df['Valor'].map('{:,.2f}'.format)
+
             st.write(df) #mostre que eles estão corretos
 
         else:
+
+            df['Valor'] = df['Valor'].map('{:,.2f}'.format)
 
             st.dataframe(df.drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
@@ -352,6 +355,8 @@ def dados_com_filtros():
 
         if filtrar:
 
+            df['Valor'] = df['Valor'].map('{:,.2f}'.format)
+
             st.table(df[filtro].drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
     elif opcao_de_filtro == 'Fluxo':
@@ -363,6 +368,8 @@ def dados_com_filtros():
         filtrar = st.button('Filtrar')
 
         if filtrar:
+
+            df['Valor'] = df['Valor'].map('{:,.2f}'.format)
 
             st.table(df[filtro].drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
@@ -376,6 +383,8 @@ def dados_com_filtros():
 
         if filtrar:
 
+            df['Valor'] = df['Valor'].map('{:,.2f}'.format)
+
             st.table(df[filtro].drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
     elif opcao_de_filtro == 'ID':
@@ -388,6 +397,8 @@ def dados_com_filtros():
 
         if filtrar:
 
+            df['Valor'] = df['Valor'].map('{:,.2f}'.format)
+
             st.table(df[filtro].drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
     else:
@@ -395,6 +406,8 @@ def dados_com_filtros():
         filtrar = st.button('Filtrar')
 
         if filtrar:
+
+            df['Valor'] = df['Valor'].map('{:,.2f}'.format)
 
             st.table(df.drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
@@ -580,6 +593,10 @@ def fluxo_de_caixa():
         tabela_fluxo.loc[('', 'Total'),mes] = tabela_fluxo[mes].sum()
 
     tabela_fluxo.rename(dict(zip(tabela_fluxo.columns, [a[:3] for a in tabela_fluxo.columns])), axis='columns', inplace=True)
+
+    def color_survived(val):
+        color = 'green' if val else 'red'
+        return f'background-color: {color}'
 
     st.dataframe(tabela_fluxo.applymap('{:,.2f}'.format), height=1000)
 
