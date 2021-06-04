@@ -11,7 +11,9 @@ import subprocess
 from bokeh.plotting import figure
 
 
-st.set_page_config(page_title='Financial History', page_icon="https://static.streamlit.io/examples/cat.jpg", layout='centered', initial_sidebar_state='auto')
+st.set_page_config(page_title='Financial History', page_icon="https://static.streamlit.io/examples/cat.jpg", layout='wide', initial_sidebar_state='auto')
+
+pd.options.display.float_format = '${:,.2f}'.format
 
 st.title("""
 
@@ -55,6 +57,7 @@ def carregar_dados():
     try:
         df['Data'] = df['Data'].dt.date
         df['Data Cadastro'] = df['Data Cadastro'].dt.date
+        df['Valor'] = df['Valor'].map('{:,.2f}'.format)
     except:
         pass
 
@@ -71,6 +74,7 @@ def mostrar_dados():
             st.write(df) #mostre que eles estão corretos
 
         else:
+
             st.dataframe(df.drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
 def cadastrar():
@@ -91,6 +95,7 @@ def cadastrar():
                               options=['','Singular', 'Múltipla Temporária', 'Múltipla Permanente'] if fluxo!='Transferência' else ['Singular'])
 
     if frequencia == 'Múltipla Temporária':
+
         parcelamento = st.text_input(label='Indique em quantas vezes o valor foi parcelado:', value='0')
         parcelamento = int(parcelamento)
 
@@ -181,7 +186,7 @@ def cadastrar():
                                 'Valor' : valor/parcelamento if fluxo=='Entrada' else -valor/parcelamento,
                                 'Instituição Financeira' : instituicao_financeira,
                                 'Provedor' : provedor,
-                                'Descrição': descricao,
+                                'Descrição': descricao + '(PARCELA ' +str(registro) + ')',
                                 'ID': ID
                                 },
                                 ignore_index=True)
@@ -319,7 +324,7 @@ def publicar_dados():
 
 def dados_com_filtros():
 
-    opcao_de_filtro = st.selectbox('Qual dado você deseja filtrar?', ['Sem filtro', 'Datas', 'Fluxo', 'Provedor'])
+    opcao_de_filtro = st.selectbox('Qual dado você deseja filtrar?', ['Sem filtro', 'Datas', 'Fluxo', 'Provedor', 'ID'])
 
     if opcao_de_filtro == 'Datas':
 
@@ -373,6 +378,18 @@ def dados_com_filtros():
 
             st.table(df[filtro].drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
+    elif opcao_de_filtro == 'ID':
+
+        operador = st.selectbox('Selecione o fluxo desejado:', df['ID'].unique())
+
+        filtro = (df['ID'] == operador)
+
+        filtrar = st.button('Filtrar')
+
+        if filtrar:
+
+            st.table(df[filtro].drop(['Data Cadastro', 'Parcelamento'], axis=1))
+
     else:
 
         filtrar = st.button('Filtrar')
@@ -404,7 +421,7 @@ def conferir_cadastros():
 
                     st.markdown(
                             """
-                            {} - Movimentação esporádica de <span style="color:rgb(6, 191, 0);font-size:larger">R$ {}</span> com data de crédito {} de {} de {} na conta {}.
+                            {} - Movimentação esporádica de <span style="color:rgb(6, 191, 0);font-size:larger">**R$ {}**</span> com data de crédito {} de {} de {} na conta {}.
                             """.format(
                              contador,
                              row['Valor'],
@@ -420,7 +437,7 @@ def conferir_cadastros():
 
                     st.markdown(
                             """
-                            {} - Movimentação parcelada de <span style="color:rgb(6, 191, 0);font-size:larger">R$ {}</span> em {} vezes, creditado todo dia {} (de {}/{} até {}/{}) na conta {}.
+                            {} - Movimentação parcelada de <span style="color:rgb(6, 191, 0);font-size:larger">**R$ {}**</span> em {} vezes, creditado todo dia {} (de {}/{} até {}/{}) na conta {}.
                             """.format(
                              contador,
                              row['Valor']*(df[df['ID'] == row['ID']]['Parcelamento'].iloc[-1]), #isso é o valor vezes o número de parcelas
@@ -438,7 +455,7 @@ def conferir_cadastros():
 
                     st.markdown(
                             """
-                            {} - Movimentação fixa de <span style="color:rgb(6, 191, 0);font-size:larger">R$ {}</span>, creditado todo dia {} na conta {}.
+                            {} - Movimentação fixa de <span style="color:rgb(6, 191, 0);font-size:larger">**R$ {}**</span>, creditado todo dia {} na conta {}.
                             """.format(
                              contador,
                              row['Valor'], #isso é o valor vezes o número de parcelas
@@ -454,7 +471,7 @@ def conferir_cadastros():
 
                     st.markdown(
                             """
-                            {} - Movimentação esporádica de <span style="color:rgb(255, 15, 0);font-size:larger">R$ {}</span> com data de débito {} de {} de {} da conta {}.
+                            {} - Movimentação esporádica de <span style="color:rgb(255, 15, 0);font-size:larger">**R$ {}**</span> com data de débito {} de {} de {} da conta {}.
                             """.format(
                              contador,
                              row['Valor'],
@@ -470,7 +487,7 @@ def conferir_cadastros():
 
                     st.markdown(
                             """
-                            {} - Movimentação parcelada de <span style="color:rgb(255, 15, 0);font-size:larger">R$ {}</span> em {} vezes, debitado todo dia {} (de {}/{} até {}/{}) da conta {}.
+                            {} - Movimentação parcelada de <span style="color:rgb(255, 15, 0);font-size:larger">**R$ {}**</span> em {} vezes, debitado todo dia {} (de {}/{} até {}/{}) da conta {}.
                             """.format(
                              contador,
                              row['Valor']*(df[df['ID'] == row['ID']]['Parcelamento'].iloc[-1]), #isso é o valor vezes o número de parcelas
@@ -488,7 +505,7 @@ def conferir_cadastros():
 
                     st.markdown(
                             """
-                            {} - Movimentação fixa de <span style="color:rgb(255, 15, 0);font-size:larger">R$ {}</span>, debitado todo dia {} da conta {}.
+                            {} - Movimentação fixa de <span style="color:rgb(255, 15, 0);font-size:larger">**R$ {}**</span>, debitado todo dia {} da conta {}.
                             """.format(
                              contador,
                              row['Valor'], #isso é o valor vezes o número de parcelas
@@ -499,8 +516,20 @@ def conferir_cadastros():
 
             elif row['Fluxo'] == 'Transferência':
 
-                st.write('Você cadastrou uma {} {} ({}) de {} que será debitada/creditada no dia {} da conta {}.'.format(
-                        row['Fluxo'],row['Frequência'],row['Provedor'],row['Valor'],row['Data'],row['Instituição Financeira']))
+                st.markdown(
+                        """
+                        {} - Transferência de <span style="color:rgb(232, 183, 7);font-size:larger">**R$ {}**</span> de {} para {} no dia {} de {} de {}.
+                        """.format(
+                        contador,
+                        abs(row['Valor']), #isso é o valor vezes o número de parcelas
+                        row['Instituição Financeira'],
+                        df['Instituição Financeira'].iloc[index+1],
+                        pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.unique()[0],
+                        pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().unique()[0],
+                        pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.unique()[0],
+                        ), True
+                    )
+
             else:
                 pass
 
@@ -508,23 +537,68 @@ def conferir_cadastros():
 
 def fluxo_de_caixa():
 
-    #country_gp = df.groupby(['Country']) #podemos transformar esse objeto numa variável
-    #country_gp.get_group('United States') #e buscar o grupo que se refere aos USA.
-    #df.resample('M', on='coluna_que_tem_data').sum() o sum funciona?
+    df['Data'] = pd.to_datetime(df['Data']) #NÃO funciona com date apenas, precisa ser datetime... putarias do pandas;
 
-     x = df['Data']
-     y = df['Valor']
+    ano = st.selectbox('Computar os dados para o ano:', df['Data'].dt.year.unique())
 
-     p = figure(
-         title='simple line example',
-         x_axis_label='x',
-         x_axis_type='datetime',
-         y_axis_label='y')
+    st.markdown(f'## FLUXO DE CAIXA - {ano}')
 
-     p.vbar(x, bottom=0, top=y, legend_label='Trend', line_width=30)
+    m_indx = [('Entrada', 'Trabalho'),
+              ('Entrada', 'Outros'),
+              ('Saída', 'Alimentação'),
+              ('Saída', 'Gasolina'),
+              ('Saída', 'Lazer'),
+              ('Saída', 'Vestiário'),
+              ('Saída', 'Transporte'),
+              ('Saída', 'Saúde'),
+              ('Saída', 'Estudos'),
+              ('Saída', 'Casa'),
+              ('Saída', 'Outros'),
+              ('', 'Total'),
+              ]
 
-     st.bokeh_chart(p, use_container_width=True)
+    tabela_fluxo = pd.DataFrame(data=None,
+        index=pd.MultiIndex.from_tuples(m_indx, names=["Fluxo", "Provedor"]),
+        columns=['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    )
 
+    df['Data'] = pd.to_datetime(df['Data']) #NÃO funciona com date apenas, precisa ser datetime... putarias do pandas;
+
+    tabela_gp = df.groupby([pd.Grouper(key='Data',freq='M'), 'Fluxo', 'Provedor'])['Valor'].sum() #o grouper é o responsável pelo resample no groupby... complexo!
+
+    for mes in tabela_fluxo.columns:
+        for fluxo_prov in tabela_fluxo.index:
+            try:
+                tabela_fluxo.loc[fluxo_prov,mes] = tabela_gp[(tabela_gp.index.get_level_values(0).month_name() == mes) &
+                                                             (tabela_gp.index.get_level_values(0).year == ano) &
+                                                             (tabela_gp.index.get_level_values(1) == fluxo_prov[0]) &
+                                                             (tabela_gp.index.get_level_values(2) == fluxo_prov[1])
+                                                             ].values[0]
+            except:
+                tabela_fluxo.loc[fluxo_prov,mes] = 0
+
+        tabela_fluxo.loc[('', 'Total'),mes] = tabela_fluxo[mes].sum()
+
+    tabela_fluxo.rename(dict(zip(tabela_fluxo.columns, [a[:3] for a in tabela_fluxo.columns])), axis='columns', inplace=True)
+
+    st.dataframe(tabela_fluxo.applymap('{:,.2f}'.format), height=1000)
+
+def grafico():
+        """
+
+        x = df['Data']
+        y = df['Valor']
+
+        p = figure(
+            title='simple line example',
+            x_axis_label='x',
+            x_axis_type='datetime',
+            y_axis_label='y')
+
+        p.vbar(x, bottom=0, top=y, legend_label='Trend', line_width=30)
+
+        st.bokeh_chart(p, use_container_width=True)
+        """
 
 menu = st.sidebar.selectbox('Escolha entre as oções:', ['Modificar os dados', 'Visualizar os dados'])
 
@@ -554,14 +628,4 @@ elif menu == 'Visualizar os dados':
     if opcoes_secundarias == 'Fluxo de caixa':
         fluxo_de_caixa()
 
-
-
-df['Data'] = pd.to_datetime(df['Data']) #NÃO funciona com date apenas, precisa ser datetime... putarias do pandas;
-
-#st.write(df.resample('M', on='Data').sum())
-
-#a=df.resample('M', on='Data').sum()
-
-#a = df.groupby(['Data','Fluxo','Provedor'])['Valor'].sum()
-
-st.write(df.groupby([pd.Grouper(key='Data',freq='M'), 'Fluxo', 'Provedor'])['Valor'].sum()) #o grouper é o responsável pelo resample no groupby... complexo!
+    mostrar_dados()

@@ -111,3 +111,59 @@ ID,Data Cadastro,Data,Fluxo,Frequência,Valor,Instituição Financeira,Provedor,
 5,2021-06-03,2024-03-28,Saída,Múltipla Permanente,-10.9,Inter,Lazer,,
 5,2021-06-03,2024-04-28,Saída,Múltipla Permanente,-10.9,Inter,Lazer,,
 5,2021-06-03,2024-05-28,Saída,Múltipla Permanente,-10.9,Inter,Lazer,,
+6,2021-06-03,2021-06-03,Transferência,Singular,-500.0,Nubank,,Saída Nubank para B3,
+6,2021-06-03,2021-06-03,Transferência,Singular,500.0,B3,,Entrada B3 de Nubank,
+7,2021-06-03,2021-06-01,Saída,Múltipla Temporária,-10.0,,,,1.0
+7,2021-06-03,2021-07-01,Saída,Múltipla Temporária,-10.0,,,,2.0
+7,2021-06-03,2021-08-01,Saída,Múltipla Temporária,-10.0,,,,3.0
+7,2021-06-03,2021-09-01,Saída,Múltipla Temporária,-10.0,,,,4.0
+7,2021-06-03,2021-10-01,Saída,Múltipla Temporária,-10.0,,,,5.0
+7,2021-06-03,2021-11-01,Saída,Múltipla Temporária,-10.0,,,,6.0
+7,2021-06-03,2021-12-01,Saída,Múltipla Temporária,-10.0,,,,7.0
+7,2021-06-03,2022-01-01,Saída,Múltipla Temporária,-10.0,,,,8.0
+7,2021-06-03,2022-02-01,Saída,Múltipla Temporária,-10.0,,,,9.0
+7,2021-06-03,2022-03-01,Saída,Múltipla Temporária,-10.0,,,,10.0
+7,2021-06-03,2022-04-01,Saída,Múltipla Temporária,-10.0,,,,11.0
+7,2021-06-03,2022-05-01,Saída,Múltipla Temporária,-10.0,,,,12.0
+8,2021-06-03,2021-06-03,Entrada,Singular,50.0,Carteira,Outros,Pai,
+9,2021-06-03,2021-06-03,Transferência,Singular,-590.0,Nubank,,Saída Nubank para B3,
+9,2021-06-03,2021-06-03,Transferência,Singular,590.0,B3,,Entrada B3 de Nubank,
+10,2021-06-03,2021-06-03,Entrada,Múltipla Temporária,11.065333333333333,,,1,1.0
+10,2021-06-03,2021-07-03,Entrada,Múltipla Temporária,11.065333333333333,,,2,2.0
+10,2021-06-03,2021-08-03,Entrada,Múltipla Temporária,11.065333333333333,,,3,3.0
+10,2021-06-03,2021-09-03,Entrada,Múltipla Temporária,11.065333333333333,,,4,4.0
+10,2021-06-03,2021-10-03,Entrada,Múltipla Temporária,11.065333333333333,,,5,5.0
+10,2021-06-03,2021-11-03,Entrada,Múltipla Temporária,11.065333333333333,,,6,6.0
+10,2021-06-03,2021-12-03,Entrada,Múltipla Temporária,11.065333333333333,,,7,7.0
+10,2021-06-03,2022-01-03,Entrada,Múltipla Temporária,11.065333333333333,,,8,8.0
+10,2021-06-03,2022-02-03,Entrada,Múltipla Temporária,11.065333333333333,,,9,9.0
+10,2021-06-03,2022-03-03,Entrada,Múltipla Temporária,11.065333333333333,,,10,10.0
+10,2021-06-03,2022-04-03,Entrada,Múltipla Temporária,11.065333333333333,,,11,11.0
+10,2021-06-03,2022-05-03,Entrada,Múltipla Temporária,11.065333333333333,,,12,12.0
+10,2021-06-03,2022-06-03,Entrada,Múltipla Temporária,11.065333333333333,,,13,13.0
+10,2021-06-03,2022-07-03,Entrada,Múltipla Temporária,11.065333333333333,,,14,14.0
+10,2021-06-03,2022-08-03,Entrada,Múltipla Temporária,11.065333333333333,,,15,15.0
+11,2021-06-03,2021-06-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 1),1.0
+11,2021-06-03,2021-07-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 2),2.0
+11,2021-06-03,2021-08-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 3),3.0
+11,2021-06-03,2021-09-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 4),4.0
+11,2021-06-03,2021-10-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 5),5.0
+11,2021-06-03,2021-11-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 6),6.0
+11,2021-06-03,2021-12-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 7),7.0
+11,2021-06-03,2022-01-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 8),8.0
+11,2021-06-03,2022-02-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 9),9.0
+11,2021-06-03,2022-03-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 10),10.0
+11,2021-06-03,2022-04-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 11),11.0
+11,2021-06-03,2022-05-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 12),12.0
+11,2021-06-03,2022-06-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 13),13.0
+11,2021-06-03,2022-07-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 14),14.0
+11,2021-06-03,2022-08-03,Entrada,Múltipla Temporária,11.065333333333333,,,(PARCELA 15),15.0
+12,2021-06-03,2021-06-03,Transferência,Singular,-594.0,,,Saída  para ,
+12,2021-06-03,2021-06-03,Transferência,Singular,594.0,,,Entrada  de ,
+13,2021-06-03,2021-06-03,,,-0.0,,,,
+14,2021-06-03,2021-06-03,,,-594.0,,,,
+15,2021-06-03,2021-06-03,,,-594.77,,,,
+16,2021-06-03,2021-06-03,Transferência,Singular,-594.77,,,Saída  para ,
+16,2021-06-03,2021-06-03,Transferência,Singular,594.77,,,Entrada  de ,
+17,2021-06-03,2021-06-03,Transferência,Singular,-0.0,,,Saída  para ,
+17,2021-06-03,2021-06-03,Transferência,Singular,0.0,,,Entrada  de ,
