@@ -70,8 +70,6 @@ def cadastrar():
 
     carregar_dados()
 
-    st.header("Cadastrar uma movimentação")
-
     #formulário
 
     data_financeira = st.date_input(label='Data da movimentação: ')
@@ -246,8 +244,6 @@ def cadastrar():
 
 def excluir():
 
-    st.header("Excluir uma movimentação")
-
     global df
 
     carregar_dados()
@@ -288,8 +284,6 @@ def excluir():
 
 def atualizar_dados():
 
-    st.header("Atualizar dados")
-
     st.error("Cuidado! Se você atualizar os seus dados, todas informações serão sincronizadas com os arquivos relacionados à última publicação (em 'Publicar dados').")
 
     att = st.button('Atualizar')
@@ -301,8 +295,6 @@ def atualizar_dados():
         st.write('Pronto!')
 
 def publicar_dados():
-
-    st.header("Publicar dados")
 
     st.error('Cuidado! Se você publicar os seus dados, as informações serão sobrescritas no servidor e não haverá como recuperar os arquivos antigos (a não ser que você tenha salvado manualmente um backup no seu computador).')
 
@@ -319,8 +311,6 @@ def publicar_dados():
         st.write('Pronto!')
 
 def dados_com_filtros():
-
-    st.header("Dados com filtros")
 
     opcao_de_filtro = st.radio('Qual informação você deseja filtrar?', ['Selecionar','Sem filtro', 'Datas', 'Fluxo', 'Provedor', 'ID'])
 
@@ -407,8 +397,6 @@ def dados_com_filtros():
             st.table(df.drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
 def conferir_cadastros():
-
-    st.header("Conferir cadastros")
 
     data_registrada = st.selectbox('Selecione a data de cadastro:', np.append(df['Data Cadastro'].unique(), values='Sem Filtro'))
 
@@ -546,8 +534,6 @@ def conferir_cadastros():
             contador += 1
 
 def fluxo_de_caixa():
-
-    st.header("Fluxo de caixa")
 
     df['Data'] = pd.to_datetime(df['Data']) #NÃO funciona com date apenas, precisa ser datetime... putarias do pandas;
 
@@ -703,8 +689,7 @@ def fluxo_de_caixa():
         st.dataframe(table.applymap('{:,.2f}'.format), height=1000)
 
 def metricas():
-
-    st.header("Métricas")
+    pass
 
 st.sidebar.title("""
 
@@ -712,7 +697,7 @@ Financial History
 
 """)
 
-st.sidebar.image(Image.open('logo3.png'), output_format='png', width=300, )
+st.sidebar.image(Image.open('img/logo3.png'), output_format='png', width=300, )
 
 st.sidebar.markdown("### Selecione uma das opções")
 
@@ -739,12 +724,14 @@ if menu == 'Modificar os dados':
     opcoes_primarias = st.sidebar.radio(
         label='',
         options = (
-            'Selecionar',
+            'Selecione mais uma opção no menu ao lado!',
             'Cadastrar uma movimentação',
             'Excluir uma movimentação',
             'Atualizar dados',
             'Publicar dados'),
         )
+
+    st.markdown(f"## **{opcoes_primarias}**")
 
     if opcoes_primarias == 'Atualizar dados':
         atualizar_dados()
@@ -769,12 +756,14 @@ elif menu == 'Visualizar os dados':
     opcoes_secundarias = st.sidebar.radio(
         label = '',
         options = (
-            'Selecionar',
+            'Selecione mais uma opção no menu ao lado!',
             'Conferir cadastros',
             'Dados com filtros',
             'Fluxo de caixa',
             'Métricas'),
         )
+
+    st.markdown(f"## **{opcoes_secundarias}**")
 
     if opcoes_secundarias == 'Conferir cadastros':
         conferir_cadastros()
@@ -789,17 +778,18 @@ elif menu == 'Visualizar os dados':
 
 elif menu == 'Configurações':
 
+    #st.image(Image.open('img/settings.png'), output_format='png', width=50, )
+
     config = st.selectbox('Configurar...',
         ['Selecionar uma opção', 'Alterar minhas Instituições Financeiras', 'Alterar meus Provedores']
     )
 
     if config == 'Alterar minhas Instituições Financeiras':
 
-        st.markdown("#### **Sua lista de Instituições Financeiras é:**")
-
+        st.markdown("#### Sua lista de Instituições Financeiras é...")
         st.write('')
 
-        arquivo = open("listas/provedores_entrada.txt", "r+", encoding='utf-8')
+        arquivo = open("listas/instituicoes_financeiras.txt", "r+", encoding='utf-8')
 
         data = pd.DataFrame(
             data = arquivo.read().split('\n'),
@@ -812,21 +802,60 @@ elif menu == 'Configurações':
 
         st.write('')
 
-        acao = st.radio('', ['Selecionar uma opção','Adicionar uma Instituição Financeira','Excluir uma Instituição Financeira'])
+        acao = st.radio('', ['Selecionar uma opção','Adicionar Instituições Financeiras','Excluir Instituições Financeiras'])
 
-        if acao == 'Adicionar uma Instituição Financeira':
+        if acao == 'Adicionar Instituições Financeiras':
 
             inst_add = st.text_input('Digite o nome da Instituição Financeira')
 
             if st.button('Adicionar!'):
                 data = data.append({'Instituições Financeiras':inst_add}, True)
-                arquivo.write('\n' + inst_add)
+
+                arquivo.truncate(0)
+
+                for index,valor in enumerate(data['Instituições Financeiras'].values):
+
+                    if index == len(data['Instituições Financeiras'].values) - 1:
+                        arquivo.write(valor)
+                    else:
+                        arquivo.write(valor + '\n')
+
                 arquivo.close()
+
+                st.success('Realizado!')
 
                 st.markdown("#### **Sua lista de Instituições Financeiras atualizada é:**")
 
                 st.write('')
 
                 st.write(data)
-                
-                pass
+
+        elif acao == 'Excluir Instituições Financeiras':
+
+            inst_exd = st.selectbox(
+                'Escolha a Instituição Financeira a ser excluída',
+                options=data['Instituições Financeiras']
+                )
+
+            if st.button('Excluir!'):
+
+                data.drop(data[data['Instituições Financeiras']==inst_exd].index, inplace=True)
+
+                arquivo.truncate(0)
+
+                for index,valor in enumerate(data['Instituições Financeiras'].values):
+
+                    if index == len(data['Instituições Financeiras'].values) - 1:
+                        arquivo.write(valor)
+                    else:
+                        arquivo.write(valor + '\n')
+
+                arquivo.close()
+
+                st.success('Realizado!')
+
+                st.markdown("#### **Sua lista de Instituições Financeiras atualizada é:**")
+
+                st.write('')
+
+                st.write(data)
