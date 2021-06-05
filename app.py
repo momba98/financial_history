@@ -720,7 +720,7 @@ elif menu == 'Visualizar os dados':
 
     carregar_dados()
 
-    opcoes_secundarias = st.selectbox(
+    opcoes_secundarias = st.sidebar.radio(
         label = 'O que você deseja visualizar?',
         options = ('Selecione uma opção', 'Conferir cadastros', 'Dados com filtros', 'Fluxo de caixa', 'Métricas'),
         )
