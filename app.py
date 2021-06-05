@@ -255,28 +255,6 @@ def cadastrar():
 
             st.success(f'Movimentação (ID {ID}) cadastrada!')
 
-def selecionar_opcoes():
-
-    opcoes_primarias = st.selectbox(
-        label = 'O que você deseja modificar?',
-        options = ('Selecione uma opção', 'Atualizar dados','Cadastrar uma movimentação', 'Excluir uma movimentação', 'Publicar dados'),
-        )
-
-    if opcoes_primarias == 'Atualizar dados':
-        atualizar_dados()
-
-    elif opcoes_primarias == 'Cadastrar uma movimentação':
-        cadastrar()
-
-    elif opcoes_primarias == 'Excluir uma movimentação':
-        excluir()
-
-    elif opcoes_primarias == 'Publicar dados':
-        publicar = st.button('Publicar')
-
-        if publicar:
-            publicar_dados()
-
 def excluir():
 
     global df
@@ -317,13 +295,17 @@ def excluir():
 
 def publicar_dados():
 
-    st.write('Dando commit no git. O webapp deve estar atualizado em instantes.')
+    publicar = st.button('Publicar')
 
-    subprocess.run(["git", "add", "*"])
-    subprocess.run(["git", "commit", "-m", f"{date.today()}"])
-    subprocess.run(["git", "push"])
+    if publicar:
 
-    st.write('Pronto!')
+        st.write('Dando commit no git. O webapp deve estar atualizado em instantes.')
+
+        subprocess.run(["git", "add", "*"])
+        subprocess.run(["git", "commit", "-m", f"{date.today()}"])
+        subprocess.run(["git", "push"])
+
+        st.write('Pronto!')
 
 def dados_com_filtros():
 
@@ -712,9 +694,22 @@ if menu == 'Modificar os dados':
 
     carregar_dados() #carregue ou crie os dados
 
-    selecionar_opcoes()
+    opcoes_primarias = st.selectbox(
+        label = 'O que você deseja modificar?',
+        options = ('Selecione uma opção', 'Atualizar dados','Cadastrar uma movimentação', 'Excluir uma movimentação', 'Publicar dados'),
+        )
 
-    mostrar_dados()
+    if opcoes_primarias == 'Atualizar dados':
+        atualizar_dados()
+
+    elif opcoes_primarias == 'Cadastrar uma movimentação':
+        cadastrar()
+
+    elif opcoes_primarias == 'Excluir uma movimentação':
+        excluir()
+
+    elif opcoes_primarias == 'Publicar dados':
+        publicar_dados()
 
 elif menu == 'Visualizar os dados':
 
@@ -734,4 +729,4 @@ elif menu == 'Visualizar os dados':
     if opcoes_secundarias == 'Fluxo de caixa':
         fluxo_de_caixa()
 
-    mostrar_dados()
+mostrar_dados()
