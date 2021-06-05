@@ -15,22 +15,6 @@ st.set_page_config(page_title='Financial History', page_icon="https://static.str
 
 pd.options.display.float_format = '${:,.2f}'.format
 
-st.title("""
-
-Financial History
-
-""")
-
-def atualizar_dados():
-
-    att = st.button('Atualizar')
-
-    if att:
-
-        st.write('Stashing o git. O webapp deve estar atualizado em instantes.')
-        subprocess.run(["git", "stash", "-u"])
-        st.write('Pronto!')
-
 def carregar_dados():
 
     global df
@@ -86,7 +70,7 @@ def cadastrar():
 
     carregar_dados()
 
-    st.header("Cadastre uma movimentação")
+    st.header("Cadastrar uma movimentação")
 
     #formulário
 
@@ -104,12 +88,17 @@ def cadastrar():
 
     valor = st.number_input(label='Valor (R$):')
 
-    instituicao_financeira = st.selectbox(label='Instituição Financeira (onde a quantia foi ou estava?)', options=['','Nubank', 'Inter', 'C6', 'PicPay', 'Hipercard', 'B3', 'Alelo', 'Carteira'])
+    instituicao_financeira = st.selectbox(
+        label='Instituição Financeira (onde a quantia foi ou estava?)',
+        options=['',]+open("listas/instituicoes_financeiras.txt", "r", encoding='utf-8').read().split('\n')
+    )
 
     if fluxo != 'Transferência':
 
-        provedor = st.selectbox(label = 'Provedor (quem foi o responsável pela movimentação? Nelogica, pai, mãe etc.):',
-                                options = ['', 'Trabalho', 'Outros'] if fluxo == 'Entrada' else ['', 'Alimentação', 'Gasolina', 'Lazer', 'Vestiário', 'Transporte', 'Saúde', 'Estudos', 'Casa', 'Outros'])
+        provedor = st.selectbox(
+            label = 'Provedor (quem foi o responsável pela movimentação? Nelogica, pai, mãe etc.):',
+            options = ['',]+open("listas/provedores_entrada.txt", "r", encoding='utf-8').read().split('\n') if fluxo == 'Entrada' else ['',]+open("listas/provedores_saida.txt", "r", encoding='utf-8').read().split('\n')
+            )
 
         descricao = st.text_input(label='Descrição:')
 
@@ -257,15 +246,19 @@ def cadastrar():
 
 def excluir():
 
+    st.header("Excluir uma movimentação")
+
     global df
 
     carregar_dados()
 
-    exclusao_retroativa = st.checkbox(label='Permitir a exclusão retroativa', value=False, help='Caso marcado, as movimentações que ocorreram até o dia atual também serão excluídas.')
 
     index_para_excluir = st.text_input(label='Indique a ID da linha a ser excluída:', value='0')
 
     index_para_excluir = int(index_para_excluir)
+
+    exclusao_retroativa = st.checkbox(label='Permitir a exclusão retroativa', value=False, help='Caso marcado, as movimentações que ocorreram até o dia atual também serão excluídas.')
+
 
     excluir = st.button('Excluir')
 
@@ -293,7 +286,25 @@ def excluir():
         except:
             st.error('A movimentação já foi liquidada (aconteceu antes de hoje) ou não foi possível encontrar a linha desejada!')
 
+def atualizar_dados():
+
+    st.header("Atualizar dados")
+
+    st.error("Cuidado! Se você atualizar os seus dados, todas informações serão sincronizadas com os arquivos relacionados à última publicação (em 'Publicar dados').")
+
+    att = st.button('Atualizar')
+
+    if att:
+
+        st.write('Stashing o git. O webapp deve estar atualizado em instantes.')
+        subprocess.run(["git", "stash", "-u"])
+        st.write('Pronto!')
+
 def publicar_dados():
+
+    st.header("Publicar dados")
+
+    st.error('Cuidado! Se você publicar os seus dados, as informações serão sobrescritas no servidor e não haverá como recuperar os arquivos antigos (a não ser que você tenha salvado manualmente um backup no seu computador).')
 
     publicar = st.button('Publicar')
 
@@ -309,7 +320,9 @@ def publicar_dados():
 
 def dados_com_filtros():
 
-    opcao_de_filtro = st.selectbox('Qual dado você deseja filtrar?', ['Sem filtro', 'Datas', 'Fluxo', 'Provedor', 'ID'])
+    st.header("Dados com filtros")
+
+    opcao_de_filtro = st.radio('Qual informação você deseja filtrar?', ['Selecionar','Sem filtro', 'Datas', 'Fluxo', 'Provedor', 'ID'])
 
     if opcao_de_filtro == 'Datas':
 
@@ -357,7 +370,7 @@ def dados_com_filtros():
 
     elif opcao_de_filtro == 'Provedor':
 
-        operador = st.selectbox('Selecione o fluxo desejado:', df['Provedor'].unique())
+        operador = st.selectbox('Selecione o provedor desejado:', df['Provedor'].unique())
 
         filtro = (df['Provedor'] == operador)
 
@@ -371,7 +384,7 @@ def dados_com_filtros():
 
     elif opcao_de_filtro == 'ID':
 
-        operador = st.selectbox('Selecione o fluxo desejado:', df['ID'].unique())
+        operador = st.selectbox('Selecione o ID desejado:', df['ID'].unique())
 
         filtro = (df['ID'] == operador)
 
@@ -383,7 +396,7 @@ def dados_com_filtros():
 
             st.table(df[filtro].drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
-    else:
+    elif opcao_de_filtro == 'Sem filtro':
 
         filtrar = st.button('Filtrar')
 
@@ -394,6 +407,8 @@ def dados_com_filtros():
             st.table(df.drop(['Data Cadastro', 'Parcelamento'], axis=1))
 
 def conferir_cadastros():
+
+    st.header("Conferir cadastros")
 
     data_registrada = st.selectbox('Selecione a data de cadastro:', np.append(df['Data Cadastro'].unique(), values='Sem Filtro'))
 
@@ -532,9 +547,11 @@ def conferir_cadastros():
 
 def fluxo_de_caixa():
 
+    st.header("Fluxo de caixa")
+
     df['Data'] = pd.to_datetime(df['Data']) #NÃO funciona com date apenas, precisa ser datetime... putarias do pandas;
 
-    range = st.radio('Selecione o range do Fluxo de Caixa:', ['Mensal', 'Anual'])
+    range = st.radio('Selecione o range do Fluxo de Caixa:', ['Selecionar', 'Mensal', 'Anual'], index=2)
 
     m_indx = [
         ('Entrada', 'Trabalho'),
@@ -632,9 +649,6 @@ def fluxo_de_caixa():
         x_axis = meses
         line = table.loc[('','Total')]
 
-    else:
-        pass
-
     #tudo que é comum aos dois
 
     acumulado = st.checkbox('Visualizar linha de saldo acumulado', True)
@@ -688,15 +702,48 @@ def fluxo_de_caixa():
 
         st.dataframe(table.applymap('{:,.2f}'.format), height=1000)
 
-menu = st.sidebar.selectbox('Escolha entre as oções:', ['Modificar os dados', 'Visualizar os dados'])
+def metricas():
+
+    st.header("Métricas")
+
+st.sidebar.title("""
+
+Financial History
+
+""")
+
+st.sidebar.image(Image.open('logo3.png'), output_format='png', width=300, )
+
+st.sidebar.markdown("### Selecione uma das opções")
+
+st.markdown(
+    """ <style>
+            div[role="radiogroup"] >  :first-child{
+                display: none !important;
+            }
+        </style>
+        """,
+    unsafe_allow_html=True
+)
+
+menu = st.sidebar.radio('', ['Selecione uma opção no menu ao lado!', 'Modificar os dados', 'Visualizar os dados', 'Configurações'])
+
+st.markdown(f"# **{menu}**")
 
 if menu == 'Modificar os dados':
 
     carregar_dados() #carregue ou crie os dados
 
-    opcoes_primarias = st.selectbox(
-        label = 'O que você deseja modificar?',
-        options = ('Selecione uma opção', 'Atualizar dados','Cadastrar uma movimentação', 'Excluir uma movimentação', 'Publicar dados'),
+    st.sidebar.markdown("#### **O que você deseja fazer?**")
+
+    opcoes_primarias = st.sidebar.radio(
+        label='',
+        options = (
+            'Selecionar',
+            'Cadastrar uma movimentação',
+            'Excluir uma movimentação',
+            'Atualizar dados',
+            'Publicar dados'),
         )
 
     if opcoes_primarias == 'Atualizar dados':
@@ -704,9 +751,11 @@ if menu == 'Modificar os dados':
 
     elif opcoes_primarias == 'Cadastrar uma movimentação':
         cadastrar()
+        mostrar_dados()
 
     elif opcoes_primarias == 'Excluir uma movimentação':
         excluir()
+        mostrar_dados()
 
     elif opcoes_primarias == 'Publicar dados':
         publicar_dados()
@@ -715,18 +764,69 @@ elif menu == 'Visualizar os dados':
 
     carregar_dados()
 
+    st.sidebar.markdown("#### **O que você deseja fazer?**")
+
     opcoes_secundarias = st.sidebar.radio(
-        label = 'O que você deseja visualizar?',
-        options = ('Selecione uma opção', 'Conferir cadastros', 'Dados com filtros', 'Fluxo de caixa', 'Métricas'),
+        label = '',
+        options = (
+            'Selecionar',
+            'Conferir cadastros',
+            'Dados com filtros',
+            'Fluxo de caixa',
+            'Métricas'),
         )
 
     if opcoes_secundarias == 'Conferir cadastros':
         conferir_cadastros()
+        mostrar_dados()
 
     if opcoes_secundarias == 'Dados com filtros':
         dados_com_filtros()
+        mostrar_dados()
 
     if opcoes_secundarias == 'Fluxo de caixa':
         fluxo_de_caixa()
 
-mostrar_dados()
+elif menu == 'Configurações':
+
+    config = st.selectbox('Configurar...',
+        ['Selecionar uma opção', 'Alterar minhas Instituições Financeiras', 'Alterar meus Provedores']
+    )
+
+    if config == 'Alterar minhas Instituições Financeiras':
+
+        st.markdown("#### **Sua lista de Instituições Financeiras é:**")
+
+        st.write('')
+
+        arquivo = open("listas/provedores_entrada.txt", "r+", encoding='utf-8')
+
+        data = pd.DataFrame(
+            data = arquivo.read().split('\n'),
+            columns=['Instituições Financeiras'],
+        )
+
+        st.write(data)
+
+        st.markdown("#### **Eu quero...**")
+
+        st.write('')
+
+        acao = st.radio('', ['Selecionar uma opção','Adicionar uma Instituição Financeira','Excluir uma Instituição Financeira'])
+
+        if acao == 'Adicionar uma Instituição Financeira':
+
+            inst_add = st.text_input('Digite o nome da Instituição Financeira')
+
+            if st.button('Adicionar!'):
+                data = data.append({'Instituições Financeiras':inst_add}, True)
+                arquivo.write('\n' + inst_add)
+                arquivo.close()
+
+                st.markdown("#### **Sua lista de Instituições Financeiras atualizada é:**")
+
+                st.write('')
+
+                st.write(data)
+                
+                pass
