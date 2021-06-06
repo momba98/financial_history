@@ -88,14 +88,14 @@ def cadastrar():
 
     instituicao_financeira = st.selectbox(
         label='Instituição Financeira (onde a quantia foi ou estava?)',
-        options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,'')
+        options=['',]+open("listas/instituicoes_financeiras.txt", "r", encoding='utf-8').read().split('\n')
     )
 
     if fluxo != 'Transferência':
 
         provedor = st.selectbox(
             label = 'Provedor (quem foi o responsável pela movimentação? Nelogica, pai, mãe etc.):',
-            options = np.insert(pd.read_csv(f"listas/provedores_entrada.csv", encoding="ISO-8859-1").values,0,'') if fluxo == 'Entrada' else np.insert(pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values,0,'')
+            options = ['',]+open("listas/provedores_entrada.txt", "r", encoding='utf-8').read().split('\n') if fluxo == 'Entrada' else ['',]+open("listas/provedores_saida.txt", "r", encoding='utf-8').read().split('\n')
             )
 
         descricao = st.text_input(label='Descrição:')
@@ -553,30 +553,25 @@ def fluxo_de_caixa():
 
     range = st.radio('Selecione o range do Fluxo de Caixa:', ['Selecionar', 'Mensal', 'Anual'], index=2)
 
-    m_indx = []
-
-    for a in pd.read_csv(f"listas/provedores_entrada.csv", encoding="ISO-8859-1").values:
-        m_indx.append(('Entrada', a[0]))
-
-    for a in pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values:
-        m_indx.append(('Saída', a[0]))
-
-    for checar_casos in (df['Fluxo']+' '+df['Provedor']).unique():
-        try: #tente adicionar a tupla de fluxo e de provedor ao db caso não esteja na lista atual
-            if (tuple(checar_casos.split(' ')) in m_indx): # se já estiver no meu index duplo, faça nada
-                pass
-            else: #se não estiver, adicione
-                if len(tuple(checar_casos.split(' ')))==2:
-                    m_indx.append(tuple(checar_casos.split(' ')))
-        except: # se nao der (por exemplo, quando é nan, avise.)
-            st.warning(f'Algumas movimentações não puderam ser agrupadas (não possuem Provedor ou Fluxo): {checar_casos}')
-
-    m_indx.sort()
+    m_indx = [
+        ('Entrada', 'Trabalho'),
+        ('Entrada', 'Outros'),
+        ('Saída', 'Alimentação'),
+        ('Saída', 'Gasolina'),
+        ('Saída', 'Lazer'),
+        ('Saída', 'Vestiário'),
+        ('Saída', 'Transporte'),
+        ('Saída', 'Saúde'),
+        ('Saída', 'Estudos'),
+        ('Saída', 'Casa'),
+        ('Saída', 'Outros'),
+        ('', 'Total')
+    ]
 
     df['Data'] = pd.to_datetime(df['Data']) #NÃO funciona com date apenas, precisa ser datetime... putarias do pandas;
 
     #independende do range escolhido, preciso do fluxo de caixa anual (mensal necessita saldos dos anos prévios)
-    
+
     tabela_fluxo_anual = pd.DataFrame(data=None,
         index=pd.MultiIndex.from_tuples(m_indx, names=["Fluxo", "Provedor"]),
         columns=df['Data'].dt.year.unique()
@@ -658,189 +653,52 @@ def fluxo_de_caixa():
 
     acumulado = st.checkbox('Visualizar linha de saldo acumulado', True)
 
-    teste = table.T
+    group_by_do_ganhos = table.loc[('Entrada','Trabalho')]+table.loc[('Entrada','Outros')] #putaria... mas é o que deu
 
-    teste[('Totais', 'Entrada')] = teste['Entrada'].sum(axis=1)
-    teste[('Totais', 'Saída')] = teste['Saída'].sum(axis=1)
-
-    teste.replace(0,np.nan, inplace=True)
-
-    teste.columns = teste.columns.map(''.join).str.strip('')
-
-    trocas = {
-        'á': 'a',
-        'ã': 'a',
-        'à': 'a',
-        'â': 'a',
-        'é': 'e',
-        'ê': 'e',
-        'í': 'i',
-        'ó': 'o',
-        'ô': 'o',
-        'õ': 'o',
-        'ú': 'u',
-        'ç': 'c',
-        ' ': ''
-    }
-
-    for coluna in teste.columns:
-        coluna_corrigida = coluna
-        for crt_errado,crt_certo in trocas.items():
-            coluna_corrigida = coluna_corrigida.lower().replace(crt_errado, crt_certo)
-
-        teste = teste.rename(
-                {
-                f'{coluna}': f'{coluna_corrigida}'
-                },
-            axis='columns'
-            )
-
-    teste.index = teste.index.map(str)
-
-    for cr_pct in teste.columns:
-        if cr_pct[0] == 'e':
-            teste['pct'+cr_pct] = teste[cr_pct]/teste['totaisentrada']
-
-        elif cr_pct[0] == 's':
-            teste['pct'+cr_pct] = teste[cr_pct]/teste['totaissaida']
-        else:
-            pass
-
-    from bokeh.models import ColumnDataSource
-    from bokeh.models import HoverTool
-    import bokeh.models as bkm
-    import bokeh.plotting as bkp
-
-    source = bkm.ColumnDataSource(data=teste)
-
-    p = bkp.figure(
-        x_range=x_axis,
-        height=400
+    group_by_do_gastos = (
+        table.loc[('Saída','Alimentação')]+
+        table.loc[('Saída','Gasolina')]+
+        table.loc[('Saída','Lazer')]+
+        table.loc[('Saída','Vestiário')]+
+        table.loc[('Saída','Transporte')]+
+        table.loc[('Saída','Saúde')]+
+        table.loc[('Saída','Estudos')]+
+        table.loc[('Saída','Casa')]+
+        table.loc[('Saída','Outros')]
     )
 
-    # BARRA DE BAIXA
+    p = figure(x_range=x_axis,toolbar_location=None,height=400)
 
-    info_baixa = bkm.Scatter(
-        x='index',
-        marker='diamond',
-        y='totaissaida',
-        line_width=15,
-        fill_color='rgb(135, 32, 32)',
-        line_color ='rgb(135, 32, 32)',
-        line_alpha=0.3,
-        fill_alpha=0.3
-    )
-
-    info_baixa_r = p.add_glyph(source_or_glyph=source, glyph=info_baixa)
-
-    keys = [k for k in dict(source.data).keys() if k[:8] == 'pctsaida']
-
-    arr_keys = ['@'+ak+"{:.2%}" for ak in keys]
-
-    keys = [k.replace('pctsaida', '').capitalize() for k in dict(source.data).keys() if k[:8] == 'pctsaida']
-
-    tt_s = dict(zip(keys,arr_keys))
-
-    info_baixa_hover = bkm.HoverTool(renderers=[info_baixa_r],
-                             tooltips=tt_s
-                        )
-
-    p.add_tools(info_baixa_hover)
-
-    baixa = bkm.VBar(
-        x='index',
-        bottom=0.,
-        top='totaissaida',
-        line_width=30,
-        #source=source,
-        fill_color='rgb(135, 32, 32)',
-        line_color ='rgb(135, 32, 32)'
-    )
-
-    baixa_r = p.add_glyph(source_or_glyph=source, glyph=baixa)
-
-    # BARRA DE ALTA
-
-    info_alta = bkm.Scatter(
-        x='index',
-        marker='diamond',
-        y='totaisentrada',
-        line_width=15,
-        fill_color='rgb(150, 150, 150)',
-        line_color ='rgb(150, 150, 150)',
-        line_alpha=0.3,
-        fill_alpha=0.3
-    )
-
-    info_alta_r = p.add_glyph(source_or_glyph=source, glyph=info_alta)
-
-    keys = [k for k in dict(source.data).keys() if k[:8] == 'pctentra']
-
-    arr_keys = ['@'+ak+"{:.2%}" for ak in keys]
-
-    keys = [k.replace('pctentrada', '').capitalize() for k in dict(source.data).keys() if k[:8] == 'pctentra']
-
-    tt_e = dict(zip(keys,arr_keys))
-
-    info_alta_hover = bkm.HoverTool(renderers=[info_alta_r],
-                             tooltips=tt_e)
-
-    p.add_tools(info_alta_hover)
-
-    alta = bkm.VBar(
-        x='index',
-        bottom=0.,
-        top='totaisentrada',
-        line_width=30,
-        #source=source,
-        fill_color='rgb(32, 135, 60)',
-        line_color ='rgb(32, 135, 60)'
-    )
-
-    alta_r = p.add_glyph(source_or_glyph=source, glyph=alta)
-
-    # LINHA DE ACUMULADO
+    p.ray(x=[0], y=[0], color='grey', alpha=0.5, line_dash='dotted')
 
     if acumulado:
-
-        info_acum = bkm.Line(
-            x='index',
-            y='total',
-            #line_width=15,
-        )
-
-        info_acum_r = p.add_glyph(source_or_glyph=source, glyph=info_acum)
-
-        keys = [k for k in dict(source.data).keys() if k[:3] == 'tot']
-
-        arr_keys = ['@'+ak+'{$ 0.00}' for ak in keys]
-
-        keys = ['Acumulado Total', 'Entrada Período', 'Saída Período']
-
-        tt_t = dict(zip(keys,arr_keys))
-
-        info_acum_hover = bkm.HoverTool(renderers=[info_acum_r],
-                                 tooltips=tt_t)
-
-        p.add_tools(info_acum_hover)
-
+        p.line(x=x_axis,
+               y=line, color='grey', line_width=1)
     else:
         pass
 
-    from bokeh.models import NumeralTickFormatter
+    st.write(group_by_do_ganhos)
+
+    p.vbar(x=x_axis,
+           bottom=0.,
+           top=group_by_do_ganhos,
+           line_width=30,
+           color='rgb(32, 135, 60)')
+
+    p.vbar(x=x_axis,
+           bottom=0.,
+           top=group_by_do_gastos,
+           line_width=30.,
+           color='rgb(135, 32, 32)')
 
     p.yaxis[0].ticker.desired_num_ticks = 7
-    p.yaxis.formatter=NumeralTickFormatter(format="$ 0")
     p.yaxis.major_tick_line_color = None  # turn off y-axis major ticks
     p.yaxis.minor_tick_line_color = None  # turn off y-axis minor ticks
     p.outline_line_alpha = 0
     p.xaxis.major_label_text_font_size = '12pt'
     p.yaxis.major_label_text_font_size = '12pt'
 
-    st.bokeh_chart(
-        p,
-        use_container_width=True
-    )
+    st.bokeh_chart(p, use_container_width=True)
 
     with st.beta_expander('Mostrar o extrato'):
 
@@ -877,7 +735,12 @@ def configuracoes():
 
     if config == f'{item}':
 
-        arquivo = pd.read_csv(f"listas/{file}.csv", encoding="ISO-8859-1")
+        arquivo = open(f"listas/{file}.txt", "r+", encoding='utf-8')
+
+        data = pd.DataFrame(
+            data = arquivo.read().split('\n'),
+            columns=[item],
+        )
 
         if tipo=='':
             st.markdown(f"#### Minha lista de {item} é...")
@@ -885,7 +748,7 @@ def configuracoes():
             st.markdown(f"#### Minha lista de {item} de {tipo} é...")
 
         st.write('')
-        st.write(arquivo)
+        st.write(data)
         st.markdown("#### **Eu quero...**")
         st.write('')
 
@@ -899,24 +762,33 @@ def configuracoes():
 
             inst_exd = st.selectbox(
                 f'Escolha o item ({item}) a ser excluído',
-                options=arquivo[item]
+                options=data[item]
                 )
 
         if st.button('Modificar!'):
 
             if acao == f'Adicionar {item}':
-                arquivo = arquivo.append({item:inst_add}, True)
+                data = data.append({item:inst_add}, True)
 
             elif acao == f'Excluir {item}':
-                arquivo.drop(arquivo[arquivo[item]==inst_exd].index, inplace=True)
+                data.drop(data[data[item]==inst_exd].index, inplace=True)
 
-            arquivo.to_csv(f"listas/{file}.csv", index=False, encoding="ISO-8859-1")
+            arquivo.truncate(0)
+
+            for index,valor in enumerate(data[item].values):
+
+                if index == len(data[item].values) - 1:
+                    arquivo.write(valor)
+                else:
+                    arquivo.write(valor + '\n')
+
+            arquivo.close()
 
             st.success('Realizado!')
             st.markdown(f"#### **Sua lista de {item} atualizada é:**")
             st.write('')
 
-            st.write(arquivo)
+            st.write(data)
 
 st.sidebar.title("""
 
