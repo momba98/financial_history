@@ -248,13 +248,11 @@ def excluir():
 
     carregar_dados()
 
+    exclusao_retroativa = st.checkbox(label='Permitir a exclusão retroativa', value=False, help='Caso marcado, as movimentações que ocorreram até o dia atual também poderão ser excluídas.')
 
-    index_para_excluir = st.text_input(label='Indique a ID da linha a ser excluída:', value='0')
+    index_para_excluir = st.selectbox('Indique a ID da linha a ser excluída:', df['ID'].unique() if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].unique())
 
     index_para_excluir = int(index_para_excluir)
-
-    exclusao_retroativa = st.checkbox(label='Permitir a exclusão retroativa', value=False, help='Caso marcado, as movimentações que ocorreram até o dia atual também serão excluídas.')
-
 
     excluir = st.button('Excluir')
 
@@ -264,23 +262,22 @@ def excluir():
         else:
             filtro = ((df['ID'] == index_para_excluir) & (df['Data']>= date.today()))
 
-        try:
-            #excluindo uma singular
-            if df[filtro]['Frequência'].values[0] == 'Singular':
-                df = df.drop(df.index[filtro])
-                df.to_csv('sheets/data.csv', index=False)
 
-            # excluindo uma Múltipla
-            else:
-                 df = df.drop(df.index[filtro])
-                 df.to_csv('sheets/data.csv', index=False)
+        #excluindo uma singular
+        if df[filtro]['Frequência'].values[0] == 'Singular':
+            df = df.drop(df.index[filtro])
+            df.to_csv('sheets/data.csv', index=False)
 
-            if exclusao_retroativa:
-                st.success(f'Você excluiu todas as cobranças da movimentação {index_para_excluir}')
-            else:
-                st.success(f'Você excluiu todas as cobranças futuras da movimentação {index_para_excluir}')
-        except:
-            st.error('A movimentação já foi liquidada (aconteceu antes de hoje) ou não foi possível encontrar a linha desejada!')
+        # excluindo uma Múltipla
+        else:
+             df = df.drop(df.index[filtro])
+             df.to_csv('sheets/data.csv', index=False)
+
+        if exclusao_retroativa:
+            st.success(f'Você excluiu todas as movimentações de ID {index_para_excluir}')
+        else:
+            st.success(f'Você excluiu todas as movimentações futuras de ID {index_para_excluir}')
+
 
 def atualizar_dados():
 
@@ -553,6 +550,22 @@ def fluxo_de_caixa():
 
     range = st.radio('Selecione o range do Fluxo de Caixa:', ['Selecionar', 'Mensal', 'Anual'], index=2)
 
+    if st.checkbox('Adicionar filtro por Instituição Financeira'):
+
+        ifescolhida = st.selectbox(
+            'Selecionar a Instiuição Financeira a ser filtrada:',
+            options=df['Instituição Financeira'].unique()
+        )
+
+        filtro = df['Instituição Financeira'] == ifescolhida
+
+        texto = '- ' + ifescolhida.upper()
+
+    else:
+        filtro = df==df
+
+        texto = ''
+
     m_indx = []
 
     for a in pd.read_csv(f"listas/provedores_entrada.csv", encoding="ISO-8859-1").values:
@@ -561,13 +574,13 @@ def fluxo_de_caixa():
     for a in pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values:
         m_indx.append(('Saída', a[0]))
 
-    for checar_casos in (df['Fluxo']+' '+df['Provedor']).unique():
+    for checar_casos in (df[filtro]['Fluxo']+'-'+df[filtro]['Provedor']).unique():
         try: #tente adicionar a tupla de fluxo e de provedor ao db caso não esteja na lista atual
-            if (tuple(checar_casos.split(' ')) in m_indx): # se já estiver no meu index duplo, faça nada
+            if (tuple(checar_casos.split('-')) in m_indx): # se já estiver no meu index duplo, faça nada
                 pass
             else: #se não estiver, adicione
-                if len(tuple(checar_casos.split(' ')))==2:
-                    m_indx.append(tuple(checar_casos.split(' ')))
+                #if len(tuple(checar_casos.split(' ')))==2: #desde que tenha apenas
+                m_indx.append(tuple(checar_casos.split('-')))
         except: # se nao der (por exemplo, quando é nan, avise.)
             st.warning(f'Algumas movimentações não puderam ser agrupadas (não possuem Provedor ou Fluxo): {checar_casos}')
 
@@ -576,13 +589,13 @@ def fluxo_de_caixa():
     df['Data'] = pd.to_datetime(df['Data']) #NÃO funciona com date apenas, precisa ser datetime... putarias do pandas;
 
     #independende do range escolhido, preciso do fluxo de caixa anual (mensal necessita saldos dos anos prévios)
-    
+
     tabela_fluxo_anual = pd.DataFrame(data=None,
         index=pd.MultiIndex.from_tuples(m_indx, names=["Fluxo", "Provedor"]),
-        columns=df['Data'].dt.year.unique()
+        columns=df[filtro]['Data'].dt.year.unique()
     )
 
-    tabela_gp_anual = df.groupby(
+    tabela_gp_anual = df[filtro][filtro].groupby(
         [pd.Grouper(key='Data',freq='Y'), 'Fluxo', 'Provedor']
         )['Valor'].sum() #o grouper é o responsável pelo resample no groupby... complexo!
 
@@ -605,17 +618,17 @@ def fluxo_de_caixa():
 
     if range == 'Anual':
 
-        st.markdown(f'## FLUXO DE CAIXA ANUAL')
+        st.markdown(f'## FLUXO DE CAIXA ANUAL {texto}')
 
         table = tabela_fluxo_anual
-        x_axis = df['Data'].dt.year.unique().astype('str')
+        x_axis = df[filtro]['Data'].dt.year.unique().astype('str')
         line = table.loc[('','Total')]
 
     elif range == 'Mensal':
 
-        ano = st.selectbox('Computar os dados para o ano:', df['Data'].dt.year.unique())
+        ano = st.selectbox('Computar os dados para o ano:', df[filtro]['Data'].dt.year.unique())
 
-        st.markdown(f'## FLUXO DE CAIXA - {ano}')
+        st.markdown(f'## FLUXO DE CAIXA - {ano} {texto}')
 
         meses = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -624,7 +637,7 @@ def fluxo_de_caixa():
             columns=meses
         )
 
-        tabela_gp_mensal = df.groupby([pd.Grouper(key='Data',freq='M'), 'Fluxo', 'Provedor'])['Valor'].sum() #o grouper é o responsável pelo resample no groupby... complexo!
+        tabela_gp_mensal = df[filtro].groupby([pd.Grouper(key='Data',freq='M'), 'Fluxo', 'Provedor'])['Valor'].sum() #o grouper é o responsável pelo resample no groupby... complexo!
 
         for mes in tabela_fluxo_mensal.columns:
             for fluxo_prov in tabela_fluxo_mensal.index:
@@ -739,6 +752,9 @@ def fluxo_de_caixa():
 
     keys = [k.replace('pctsaida', '').capitalize() for k in dict(source.data).keys() if k[:8] == 'pctsaida']
 
+    keys.append('Total')
+    arr_keys.append('@'+'totaissaida'+'{$ 0.00}')
+
     tt_s = dict(zip(keys,arr_keys))
 
     info_baixa_hover = bkm.HoverTool(renderers=[info_baixa_r],
@@ -779,6 +795,9 @@ def fluxo_de_caixa():
     arr_keys = ['@'+ak+"{:.2%}" for ak in keys]
 
     keys = [k.replace('pctentrada', '').capitalize() for k in dict(source.data).keys() if k[:8] == 'pctentra']
+
+    keys.append('Total')
+    arr_keys.append('@'+'totaisentrada'+'{$ 0.00}')
 
     tt_e = dict(zip(keys,arr_keys))
 
@@ -846,8 +865,91 @@ def fluxo_de_caixa():
 
         st.dataframe(table.applymap('{:,.2f}'.format), height=1000)
 
-def metricas():
-    pass
+def visual_diario():
+
+    if st.checkbox('Adicionar filtro por Instituição Financeira'):
+
+        ifescolhida = st.selectbox(
+            'Selecionar a Instiuição Financeira a ser filtrada:',
+            options=df['Instituição Financeira'].unique()
+        )
+
+        filtro = df['Instituição Financeira'] == ifescolhida
+
+        texto = '- ' + ifescolhida.upper()
+
+    else:
+        filtro = df==df
+
+        texto = ''
+
+    col1, col2 = st.beta_columns(2)
+
+    ano = col1.selectbox(
+        'Selecione o ano para visualização:',
+         pd.to_datetime(df[filtro]['Data']).dt.year.unique()
+    )
+
+    mes = col2.selectbox(
+        'Selecione o mês para visualização:',
+        np.sort(pd.to_datetime(df[filtro][pd.to_datetime(df[filtro]['Data']).dt.year==ano]['Data']).dt.month.unique())
+    )
+
+    
+
+    format_dict = {}
+
+    raw_data = df[filtro][
+        (
+        (pd.to_datetime(df[filtro]['Data']).dt.month == mes) &
+        (pd.to_datetime(df[filtro]['Data']).dt.year == ano)
+        )
+    ].drop(['Data Cadastro'], axis='columns')
+
+    visual_diario = pd.DataFrame(
+        data = None,
+        columns = None,
+    )
+
+    for coluna in range(1,raw_data.groupby('Data').count()['ID'].max()+1,1):
+        visual_diario[f'Valor {coluna}'] = np.nan
+        visual_diario[f'Provedor {coluna}'] = np.nan
+        format_dict[f'Valor {coluna}'] = '{:,.2f}'
+        format_dict[f'Provedor {coluna}'] = '{:s}'
+
+    for linha in range(1,pd.to_datetime(raw_data.iloc[0]['Data']).days_in_month,1):
+        visual_diario.loc[linha] = np.nan
+
+    raw_data.sort_values('Data', inplace=True)
+
+    dia = 0
+
+    for a,b in raw_data.iterrows():
+
+        if b['Data'] != dia:
+            constante=1
+
+        visual_diario.loc[pd.to_datetime(b['Data']).day,f'Valor {constante}']=b['Valor']
+        visual_diario.loc[pd.to_datetime(b['Data']).day,f'Provedor {constante}']=b['Provedor']
+
+        dia = b['Data']
+        constante+=1
+
+    visual_diario.sort_index(inplace=True)
+
+    def color(val):
+        color = 'rgba(32, 135, 60, 0.5)' if val > 0 else ('rgba(135, 32, 32, 0.3)' if val < 0 else 'white')
+        return 'background-color: %s' % color
+
+    def weekend(val):
+        color = 'rgba(32, 135, 60, 0.5)' if val > 0 else ('rgba(135, 32, 32, 0.3)' if val < 0 else 'white')
+        return 'background-color: %s' % color
+
+    import calendar
+
+    st.subheader(f'GASTOS DIÁRIOS DE {calendar.month_name[mes].upper()}/{ano} {texto}')
+
+    st.dataframe(visual_diario.style.format(format_dict, na_rep='').applymap(color, subset=pd.IndexSlice[:, [vk for vk in format_dict.keys() if vk[0] == 'V']]).set_properties(**{'font-weight': 'bold','border-color': 'black'}), height=2000)
 
 def configuracoes():
 
@@ -987,7 +1089,7 @@ elif menu == 'Visualizar os dados':
             'Conferir cadastros',
             'Dados com filtros',
             'Fluxo de caixa',
-            'Métricas'),
+            'Visualização diária'),
         )
 
     st.markdown(f"## **{opcoes_secundarias}**")
@@ -996,12 +1098,16 @@ elif menu == 'Visualizar os dados':
         conferir_cadastros()
         mostrar_dados()
 
-    if opcoes_secundarias == 'Dados com filtros':
+    elif opcoes_secundarias == 'Dados com filtros':
         dados_com_filtros()
         mostrar_dados()
 
-    if opcoes_secundarias == 'Fluxo de caixa':
+    elif opcoes_secundarias == 'Fluxo de caixa':
         fluxo_de_caixa()
+
+    elif opcoes_secundarias == 'Visualização diária':
+        visual_diario()
+
 
 elif menu == 'Configurações':
 
