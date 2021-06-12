@@ -370,7 +370,7 @@ def atualizar_dados():
 
             subprocess.run(["git", "stash", "-u"])
 
-        st.write('Pronto!')
+        st.success('Pronto!')
 
 def publicar_dados():
 
