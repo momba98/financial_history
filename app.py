@@ -372,6 +372,8 @@ def atualizar_dados():
 
         st.success('Pronto!')
 
+        st.balloons()
+
 def publicar_dados():
 
     st.error('Cuidado! Se você publicar os seus dados, as informações serão sobrescritas no servidor e não haverá como recuperar os arquivos antigos (a não ser que você tenha salvado manualmente um backup no seu computador).')
@@ -386,6 +388,8 @@ def publicar_dados():
             subprocess.run(["git", "push"])
 
         st.success('Pronto!')
+
+        st.balloons()
 
 def dados_com_filtros():
 
