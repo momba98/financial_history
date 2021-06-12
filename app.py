@@ -376,13 +376,12 @@ def publicar_dados():
 
     if publicar:
 
-        st.write('Dando commit no git. O webapp deve estar atualizado em instantes.')
+        with st.spinner('Dando commit no git. O webapp deve estar atualizado em instantes...'):
+            subprocess.run(["git", "add", "*"])
+            subprocess.run(["git", "commit", "-m", f"{date.today()}"])
+            subprocess.run(["git", "push"])
 
-        subprocess.run(["git", "add", "*"])
-        subprocess.run(["git", "commit", "-m", f"{date.today()}"])
-        subprocess.run(["git", "push"])
-
-        st.write('Pronto!')
+        st.success('Pronto!')
 
 def dados_com_filtros():
 
