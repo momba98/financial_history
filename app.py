@@ -84,6 +84,11 @@ def cadastrar():
         parcelamento = st.text_input(label='Indique em quantas vezes o valor foi parcelado:', value='0')
         parcelamento = int(parcelamento)
 
+    elif frequencia == 'Múltipla Permanente':
+
+        tempo = st.text_input(label='Indique em meses (aproximadamente) quanto tempo esta movimentação perdurará:', value='0')
+        tempo = int(tempo)
+
     valor = st.number_input(label='Valor (R$):')
 
     instituicao_financeira = st.selectbox(
@@ -172,7 +177,7 @@ def cadastrar():
                                 'Data': data_financeira_trabalhada,
                                 'Fluxo': fluxo,
                                 'Frequência' : frequencia,
-                                'Parcelamento' : registro,
+                                'Parcelamento' : str(registro)+'/'+str(parcelamento),
                                 'Valor' : valor/parcelamento if fluxo=='Entrada' else -valor/parcelamento,
                                 'Instituição Financeira' : instituicao_financeira,
                                 'Provedor' : provedor,
@@ -196,9 +201,7 @@ def cadastrar():
 
             data_financeira_trabalhada = data_financeira
 
-            ano_em_meses = 12
-
-            for registro in range(1,(ano_em_meses*3)+1,1): #vou cadastrar para até 3 anos para frente
+            for registro in range(1,tempo+1,1): #vou cadastrar para até 3 anos para frente
 
                 df = df.append({'Data Cadastro': data_cadastro,
                                 'Data': data_financeira_trabalhada,
@@ -250,33 +253,107 @@ def excluir():
 
     exclusao_retroativa = st.checkbox(label='Permitir a exclusão retroativa', value=False, help='Caso marcado, as movimentações que ocorreram até o dia atual também poderão ser excluídas.')
 
-    index_para_excluir = st.selectbox('Indique a ID da linha a ser excluída:', df['ID'].unique() if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].unique())
+    tipo_exclusao = st.selectbox('Excluir por...', ['', 'Index (número mais à esquerda da tabela, identificação única)', 'ID'])
 
-    index_para_excluir = int(index_para_excluir)
+    if tipo_exclusao == 'ID':
 
-    excluir = st.button('Excluir')
+        index_para_excluir = st.selectbox('Indique a ID da movimentação a ser excluída:', df['ID'].unique() if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].unique())
 
-    if excluir:
-        if exclusao_retroativa:
-            filtro = (df['ID'] == index_para_excluir)
-        else:
-            filtro = ((df['ID'] == index_para_excluir) & (df['Data']>= date.today()))
+        index_para_excluir = int(index_para_excluir)
 
+        excluir = st.button('Excluir')
 
-        #excluindo uma singular
-        if df[filtro]['Frequência'].values[0] == 'Singular':
-            df = df.drop(df.index[filtro])
+        if excluir:
+            if exclusao_retroativa:
+                filtro = (df['ID'] == index_para_excluir)
+            else:
+                filtro = ((df['ID'] == index_para_excluir) & (df['Data']>= date.today()))
+
+            #excluindo uma singular
+            if df[filtro]['Frequência'].values[0] == 'Singular':
+                df = df.drop(df.index[filtro])
+                df.to_csv('sheets/data.csv', index=False)
+
+            # excluindo uma Múltipla
+            else:
+                 df = df.drop(df.index[filtro])
+                 df.to_csv('sheets/data.csv', index=False)
+
+            if exclusao_retroativa:
+                st.success(f'Você excluiu todas as movimentações de ID {index_para_excluir}')
+            else:
+                st.success(f'Você excluiu todas as movimentações futuras de ID {index_para_excluir}')
+
+    elif tipo_exclusao == 'Index (número mais à esquerda da tabela, identificação única)':
+
+        index_para_excluir = st.selectbox('Indique o Index da movimentação a ser excluída:', df.index if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].index)
+
+        index_para_excluir = int(index_para_excluir)
+
+        excluir = st.button('Excluir')
+
+        if excluir:
+
+            df = df.drop(index_para_excluir)
+
             df.to_csv('sheets/data.csv', index=False)
 
-        # excluindo uma Múltipla
-        else:
-             df = df.drop(df.index[filtro])
-             df.to_csv('sheets/data.csv', index=False)
+            st.success(f'Você excluiu a movimentação de Index {index_para_excluir}')
 
-        if exclusao_retroativa:
-            st.success(f'Você excluiu todas as movimentações de ID {index_para_excluir}')
+def antecipador():
+
+    global df
+
+    carregar_dados()
+
+    #selecionar apenas as compras com parcelas no futuro:
+
+    index_para_antecipar = st.selectbox('Indique a ID da movimentação que terá uma parcela a ser antecipada:', df[((df['Data']>=date.today()) & (df['Frequência']=='Múltipla Temporária'))]['ID'].unique())
+
+    parcela_para_antecipar = st.selectbox('Indique a parcela a ser antecipada:', df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Parcelamento'].values)
+
+    st.write('Confirme a parcela a ser antecipada:')
+
+    st.write(df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))])
+
+    #dar o drop neste index
+
+    #e criar a linha nova antecipada
+
+    data_financeira = st.date_input(label='Nova data da movimentação (data em que ocorrerá o débito ou crédito): ')
+
+    valor = st.number_input(label='Novo valor em R$ (com possível desconto):')
+
+    descricao = st.text_input(label='Descrição:')
+
+    if st.button('Cadastrar!'):
+
+        if len(df['ID'].dropna()) == 0:
+            ID = 0
         else:
-            st.success(f'Você excluiu todas as movimentações futuras de ID {index_para_excluir}')
+            ID = df['ID'].values[-1] + 1
+
+        df = df.append({'Data Cadastro': date.today(),
+                        'Data': data_financeira,
+                        'Fluxo': df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Fluxo'].values[0],
+                        'Frequência' : 'Antecipamento',
+                        'Valor' : valor if df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Fluxo'].values[0]=='Entrada' else -valor,
+                        'Instituição Financeira' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Instituição Financeira'].values[0],
+                        'Provedor' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Provedor'].values[0],
+                        'Descrição': f'Parcela {parcela_para_antecipar} antecipada da movimentação {index_para_antecipar} - '+ descricao,
+                        'ID': ID
+                        },
+                        ignore_index=True)
+
+        df.drop(df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))].index, inplace=True)
+
+        df.to_csv('sheets/data.csv', index=False)
+
+        st.success('Movimentação realizada com sucesso!')
+
+
+
+    pass
 
 
 def atualizar_dados():
@@ -449,8 +526,8 @@ def conferir_cadastros():
                             {} - Movimentação parcelada de <span style="color:rgb(6, 191, 0);font-size:larger">**R$ {}**</span> em {} vezes, creditado todo dia {} (de {}/{} até {}/{}) na conta {}.
                             """.format(
                              contador,
-                             row['Valor']*(df[df['ID'] == row['ID']]['Parcelamento'].iloc[-1]), #isso é o valor vezes o número de parcelas
-                             int(df[df['ID'] == row['ID']]['Parcelamento'].iloc[-1]), #isso é o número de parcelas
+                             '{:,.2f}'.format((row['Valor']*int(str(df[df['ID'] == row['ID']]['Parcelamento'].iloc[0]).split('/')[-1]))), #isso é o valor vezes o número de parcelas
+                             int(str(df[df['ID'] == row['ID']]['Parcelamento'].iloc[0]).split('/')[-1]), #isso é o número de parcelas
                              pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.unique()[0], #isso é o dia do mês que será creditado
                              pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().iloc[0], #o mês que começará o crédito
                              pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.iloc[0],
@@ -469,6 +546,23 @@ def conferir_cadastros():
                              contador,
                              row['Valor'], #isso é o valor vezes o número de parcelas
                              pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.unique()[0],
+                             row['Instituição Financeira']
+                             ), True
+                        )
+
+                elif row['Frequência'] == 'Antecipamento':
+
+                    st.markdown(
+                            """
+                            {} - Movimentação de antecipação da parcela {} da movimentação de ID {} de <span style="color:rgb(6, 191, 0);font-size:larger">**R$ {}**</span>, agora creditado dia {} de {} de {} na conta {}.
+                            """.format(
+                             contador,
+                             row['Descrição'].split(' ')[1],
+                             row['Descrição'].split(' ')[5][:-1],
+                             row['Valor'], #isso é o valor vezes o número de parcelas
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.values[0],
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().values[0],
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.values[0],
                              row['Instituição Financeira']
                              ), True
                         )
@@ -499,8 +593,8 @@ def conferir_cadastros():
                             {} - Movimentação parcelada de <span style="color:rgb(255, 15, 0);font-size:larger">**R$ {}**</span> em {} vezes, debitado todo dia {} (de {}/{} até {}/{}) da conta {}.
                             """.format(
                              contador,
-                             row['Valor']*(df[df['ID'] == row['ID']]['Parcelamento'].iloc[-1]), #isso é o valor vezes o número de parcelas
-                             int(df[df['ID'] == row['ID']]['Parcelamento'].iloc[-1]), #isso é o número de parcelas
+                             '{:,.2f}'.format((row['Valor']*int(str(df[df['ID'] == row['ID']]['Parcelamento'].iloc[0]).split('/')[-1]))), #isso é o valor vezes o número de parcelas
+                             int(str(df[df['ID'] == row['ID']]['Parcelamento'].iloc[0]).split('/')[-1]), #isso é o número de parcelas
                              pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.unique()[0], #isso é o dia do mês que será creditado
                              pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().iloc[0], #o mês que começará o crédito
                              pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.iloc[0],
@@ -523,6 +617,24 @@ def conferir_cadastros():
                              ), True
                         )
 
+                elif row['Frequência'] == 'Antecipamento':
+
+                    st.markdown(
+                            """
+                            {} - Movimentação de antecipação da parcela {} da movimentação de ID {} de <span style="color:rgb(255, 15, 0);font-size:larger">**R$ {}**</span>, agora debitado dia {} de {} de {} na conta {}.
+                            """.format(
+                             contador,
+                             row['Descrição'].split(' ')[1],
+                             row['Descrição'].split(' ')[5][:-1],
+                             row['Valor'], #isso é o valor vezes o número de parcelas
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.values[0],
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().values[0],
+                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.values[0],
+                             row['Instituição Financeira']
+                             ), True
+                        )
+
+
             elif row['Fluxo'] == 'Transferência':
 
                 st.markdown(
@@ -538,7 +650,6 @@ def conferir_cadastros():
                         pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.unique()[0],
                         ), True
                     )
-
             else:
                 pass
 
@@ -895,7 +1006,7 @@ def visual_diario():
         np.sort(pd.to_datetime(df[filtro][pd.to_datetime(df[filtro]['Data']).dt.year==ano]['Data']).dt.month.unique())
     )
 
-    
+
 
     format_dict = {}
 
@@ -958,12 +1069,16 @@ def configuracoes():
     file = ''
 
     config = st.selectbox('Configurar...',
-        ['Selecionar uma opção', 'Instituições Financeiras', 'Provedores']
+        ['Selecionar uma opção', 'Instituições Financeiras', 'Provedores', 'Provisionar']
     )
 
     if config == 'Instituições Financeiras':
         item = 'Instituições Financeiras'
         file = 'instituicoes_financeiras'
+
+    elif config == 'Provisionar':
+        item = 'Provisionar'
+        file = 'provisionar'
 
     elif config == 'Provedores':
 
@@ -979,7 +1094,7 @@ def configuracoes():
 
     if config == f'{item}':
 
-        arquivo = pd.read_csv(f"listas/{file}.csv", encoding="ISO-8859-1")
+        arquivo = pd.read_csv(f"listas/{file}.csv", encoding="ISO-8859-1", sep=';')
 
         if tipo=='':
             st.markdown(f"#### Minha lista de {item} é...")
@@ -995,7 +1110,29 @@ def configuracoes():
 
         if acao == f'Adicionar {item}':
 
-            inst_add = st.text_input(f'Digite o nome ({item})')
+            if file == 'provisionar':
+
+                posi_ou_nega = st.selectbox('Escolha o tipo de provisão:', ['','Entrada', 'Saída'])
+
+                if posi_ou_nega == 'Entrada':
+
+                    inst_add = st.selectbox(
+                        f'Escolha o item para criar provisão positiva (baseado na lista de Provedores):',
+                        pd.read_csv(f"listas/provedores_entrada.csv", encoding="ISO-8859-1")['Provedores'].tolist()
+                    )
+                    valor_add = st.number_input(f'Digite o valor em R$')
+
+                elif posi_ou_nega == 'Saída':
+
+                    inst_add = st.selectbox(
+                        f'Escolha o item para criar provisão negativa (baseado na lista de Provedores):',
+                        pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1")['Provedores'].tolist()
+                    )
+                    valor_add = st.number_input(f'Digite o valor em R$ (não se preocupe com o sinal)')*-1
+
+            else:
+                inst_add = st.text_input(f'Digite o nome ({item})')
+
 
         elif acao == f'Excluir {item}':
 
@@ -1007,12 +1144,15 @@ def configuracoes():
         if st.button('Modificar!'):
 
             if acao == f'Adicionar {item}':
-                arquivo = arquivo.append({item:inst_add}, True)
+                if file == 'provisionar':
+                    arquivo = arquivo.append({item:inst_add, 'Valor':valor_add}, True)
+                else:
+                    arquivo = arquivo.append({item:inst_add}, True)
 
             elif acao == f'Excluir {item}':
                 arquivo.drop(arquivo[arquivo[item]==inst_exd].index, inplace=True)
 
-            arquivo.to_csv(f"listas/{file}.csv", index=False, encoding="ISO-8859-1")
+            arquivo.to_csv(f"listas/{file}.csv", index=False, encoding="ISO-8859-1", sep=';')
 
             st.success('Realizado!')
             st.markdown(f"#### **Sua lista de {item} atualizada é:**")
@@ -1056,6 +1196,7 @@ if menu == 'Modificar os dados':
             'Selecione mais uma opção no menu ao lado!',
             'Cadastrar uma movimentação',
             'Excluir uma movimentação',
+            'Antecipar uma parcela',
             'Atualizar dados',
             'Publicar dados'),
         )
@@ -1071,6 +1212,10 @@ if menu == 'Modificar os dados':
 
     elif opcoes_primarias == 'Excluir uma movimentação':
         excluir()
+        mostrar_dados()
+
+    elif opcoes_primarias == 'Antecipar uma parcela':
+        antecipador()
         mostrar_dados()
 
     elif opcoes_primarias == 'Publicar dados':
