@@ -565,7 +565,7 @@ def conferir_cadastros():
                             """.format(
                              contador,
                              row['Descrição'].split(' ')[1],
-                             row['Descrição'].split(' ')[5][:-1],
+                             row['Descrição'].split(' ')[5],
                              row['Valor'], #isso é o valor vezes o número de parcelas
                              pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.values[0],
                              pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().values[0],
@@ -632,7 +632,7 @@ def conferir_cadastros():
                             """.format(
                              contador,
                              row['Descrição'].split(' ')[1],
-                             row['Descrição'].split(' ')[5][:-1],
+                             row['Descrição'].split(' ')[5],
                              row['Valor'], #isso é o valor vezes o número de parcelas
                              pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.values[0],
                              pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().values[0],
@@ -668,21 +668,7 @@ def fluxo_de_caixa():
 
     range = st.radio('Selecione o range do Fluxo de Caixa:', ['Selecionar', 'Mensal', 'Anual'], index=2)
 
-    if st.checkbox('Adicionar filtro por Instituição Financeira'):
-
-        ifescolhida = st.selectbox(
-            'Selecionar a Instiuição Financeira a ser filtrada:',
-            options=df['Instituição Financeira'].unique()
-        )
-
-        filtro = df['Instituição Financeira'] == ifescolhida
-
-        texto = '- ' + ifescolhida.upper()
-
-    else:
-        filtro = df==df
-
-        texto = ''
+    provisoes = st.checkbox('Mostrar provisões')
 
     m_indx = []
 
@@ -692,7 +678,7 @@ def fluxo_de_caixa():
     for a in pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values:
         m_indx.append(('Saída', a[0]))
 
-    for checar_casos in (df[filtro]['Fluxo']+'-'+df[filtro]['Provedor']).unique():
+    for checar_casos in (df['Fluxo']+'-'+df['Provedor']).unique():
         try: #tente adicionar a tupla de fluxo e de provedor ao db caso não esteja na lista atual
             if (tuple(checar_casos.split('-')) in m_indx): # se já estiver no meu index duplo, faça nada
                 pass
@@ -700,7 +686,7 @@ def fluxo_de_caixa():
                 #if len(tuple(checar_casos.split(' ')))==2: #desde que tenha apenas
                 m_indx.append(tuple(checar_casos.split('-')))
         except: # se nao der (por exemplo, quando é nan, avise.)
-            st.warning(f'Algumas movimentações não puderam ser agrupadas (não possuem Provedor ou Fluxo): {checar_casos}')
+            pass
 
     m_indx.sort()
 
@@ -710,10 +696,46 @@ def fluxo_de_caixa():
 
     tabela_fluxo_anual = pd.DataFrame(data=None,
         index=pd.MultiIndex.from_tuples(m_indx, names=["Fluxo", "Provedor"]),
-        columns=df[filtro]['Data'].dt.year.unique()
+        columns=df['Data'].dt.year.unique()
     )
 
-    tabela_gp_anual = df[filtro][filtro].groupby(
+    df_fc = df.copy()
+
+    if provisoes:
+
+        datas_para_colocar_prov = (
+        df_fc[
+            (
+                ((df_fc['Fluxo'] == 'Entrada') | (df_fc['Fluxo'] == 'Saída')) & #SÓ EXISTIRÁ PROVISÃO NOS MESES FUTUROS EM QUE ALGUMA MOVIMENTAÇÃO ESTÁ PREVISTA!
+                (df_fc['Data']>(pd.to_datetime('today')+relativedelta(months=+1))) # A PARTIR DO MOMENTO EM QUE UM MÊS COMEÇA, AS PROVISÕES DESTE MÊS SÃO DESLIGADAS.
+            )
+            ]['Data'].sort_values().dt.strftime('%Y-%m').unique()
+        )
+
+        #st.write(datas_para_colocar_prov)
+
+        for index,row in pd.read_csv(f"listas/provisionar.csv", encoding="ISO-8859-1", sep=';').iterrows():
+
+            for data_ in datas_para_colocar_prov:
+
+                if len(df_fc['ID'].dropna()) == 0:
+                    ID = 0
+                else:
+                    ID = df_fc['ID'].values[-1] + 1
+
+                df_fc = df_fc.append({'Data Cadastro': date.today(),
+                                      'Data': pd.to_datetime(data_+'-28'),
+                                      'Fluxo': 'Entrada' if row[1] > 0 else 'Saída',
+                                      'Frequência' : 'PROVISÃO',
+                                      'Valor' : row[1],
+                                      'Instituição Financeira' : None,
+                                      'Provedor' : row[0],
+                                      'Descrição': None,
+                                      'ID': ID
+                                      },
+                                      ignore_index=True)
+
+    tabela_gp_anual = df_fc.groupby(
         [pd.Grouper(key='Data',freq='Y'), 'Fluxo', 'Provedor']
         )['Valor'].sum() #o grouper é o responsável pelo resample no groupby... complexo!
 
@@ -736,17 +758,17 @@ def fluxo_de_caixa():
 
     if range == 'Anual':
 
-        st.markdown(f'## FLUXO DE CAIXA ANUAL {texto}')
+        st.markdown(f'## FLUXO DE CAIXA ANUAL')
 
         table = tabela_fluxo_anual
-        x_axis = df[filtro]['Data'].dt.year.unique().astype('str')
+        x_axis = df_fc['Data'].dt.year.unique().astype('str')
         line = table.loc[('','Total')]
 
     elif range == 'Mensal':
 
-        ano = st.selectbox('Computar os dados para o ano:', df[filtro]['Data'].dt.year.unique())
+        ano = st.selectbox('Computar os dados para o ano:', df_fc['Data'].dt.year.unique())
 
-        st.markdown(f'## FLUXO DE CAIXA - {ano} {texto}')
+        st.markdown(f'## FLUXO DE CAIXA - {ano}')
 
         meses = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -755,7 +777,7 @@ def fluxo_de_caixa():
             columns=meses
         )
 
-        tabela_gp_mensal = df[filtro].groupby([pd.Grouper(key='Data',freq='M'), 'Fluxo', 'Provedor'])['Valor'].sum() #o grouper é o responsável pelo resample no groupby... complexo!
+        tabela_gp_mensal = df_fc.groupby([pd.Grouper(key='Data',freq='M'), 'Fluxo', 'Provedor'])['Valor'].sum()
 
         for mes in tabela_fluxo_mensal.columns:
             for fluxo_prov in tabela_fluxo_mensal.index:
