@@ -364,10 +364,12 @@ def atualizar_dados():
 
     if att:
 
-        with st.spinner('Stashing o git. O webapp deve estar atualizado em instantes.'):
+        with st.spinner('Stashing o git. O webapp deve estar atualizado em instantes...'):
+
+            time.sleep(2)
 
             subprocess.run(["git", "stash", "-u"])
-            
+
         st.write('Pronto!')
 
 def publicar_dados():
