@@ -360,36 +360,36 @@ def atualizar_dados():
 
     st.error("Cuidado! Se você atualizar os seus dados, todas informações serão sincronizadas com os arquivos relacionados à última publicação (em 'Publicar dados').")
 
-    att = st.button('Atualizar')
+    if st.checkbox('Eu estou ciente do caminho perigoso que posso estar tomando!'):
 
-    if att:
+        if st.button('Atualizar'):
 
-        with st.spinner('Stashing o git. O webapp deve estar atualizado em instantes...'):
+            with st.spinner('Stashing o git. O webapp deve estar atualizado em instantes...'):
 
-            time.sleep(2)
+                time.sleep(2)
 
-            subprocess.run(["git", "stash", "-u"])
+                subprocess.run(["git", "stash", "-u"])
 
-        st.success('Pronto!')
+            st.success('Pronto!')
 
-        st.balloons()
+            st.balloons()
 
 def publicar_dados():
 
     st.error('Cuidado! Se você publicar os seus dados, as informações serão sobrescritas no servidor e não haverá como recuperar os arquivos antigos (a não ser que você tenha salvado manualmente um backup no seu computador).')
 
-    publicar = st.button('Publicar')
+    if st.checkbox('Eu estou ciente do caminho perigoso que posso estar tomando!'):
 
-    if publicar:
+        if st.button('Publicar'):
 
-        with st.spinner('Dando commit no git. O webapp deve estar atualizado em instantes...'):
-            subprocess.run(["git", "add", "*"])
-            subprocess.run(["git", "commit", "-m", f"{date.today()}"])
-            subprocess.run(["git", "push"])
+            with st.spinner('Dando commit no git. O webapp deve estar atualizado em instantes...'):
+                subprocess.run(["git", "add", "*"])
+                subprocess.run(["git", "commit", "-m", f"{date.today()}"])
+                subprocess.run(["git", "push"])
 
-        st.success('Pronto!')
+            st.success('Pronto!')
 
-        st.balloons()
+            st.balloons()
 
 def dados_com_filtros():
 
