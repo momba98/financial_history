@@ -107,7 +107,7 @@ def cadastrar():
 
     else:
 
-        instituicao_financeira_2 = st.selectbox(label='Para qual Instituição Financeira o valor foi destiando?', options=['','Nubank', 'Inter', 'C6', 'PicPay', 'Hipercard', 'B3', 'Cofre'])
+        instituicao_financeira_2 = st.selectbox(label='Para qual Instituição Financeira o valor foi destiando?', options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,''))
 
 
     data_cadastro = date.today()
