@@ -32,11 +32,11 @@ def carregar_dados():
                                     'Parcelamento',
                                     ])
 
-        file.to_csv('sheets/data.csv', index=False) #crie este arquivo
+        file.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1") #crie este arquivo
 
     data_parser = lambda x: pd.datetime.strptime(x[:10], '%Y-%m-%d')
 
-    df = pd.read_csv('sheets/data.csv', parse_dates=['Data','Data Cadastro'], date_parser=data_parser) #e então carregue este arquivo
+    df = pd.read_excel('sheets/data.xlsx', parse_dates=['Data','Data Cadastro'], date_parser=data_parser, encoding="ISO-8859-1") #e então carregue este arquivo
 
     try:
         df['Data'] = df['Data'].dt.date
@@ -119,9 +119,9 @@ def cadastrar():
                                 },
                                 ignore_index=True)
 
-                df.to_csv('sheets/data.csv', index=False)
+                df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
-                #chegada do um banco para o outro
+                #chegada de um banco para o outro
 
                 df = df.append({'Data Cadastro': data_cadastro,
                                 'Data': data_financeira,
@@ -134,7 +134,7 @@ def cadastrar():
                                 },
                                 ignore_index=True)
 
-                df.to_csv('sheets/data.csv', index=False)
+                df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
                 st.success(f'Movimentação (ID {ID}) cadastrada!')
 
@@ -144,6 +144,8 @@ def cadastrar():
             label='Frequência da movimentação: ',
             options=['','Singular', 'Múltipla Temporária', 'Múltipla Permanente']
         )
+
+        #formulário de parcelamentos
 
         if frequencia == 'Múltipla Temporária':
 
@@ -198,9 +200,11 @@ def cadastrar():
 
                         data_financeira_trabalhada = data_financeira_trabalhada + relativedelta(months=1)
 
-                    df.to_csv('sheets/data.csv', index=False)
+                    df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
                     st.success(f'Movimentação (ID {ID}) cadastrada!')
+
+        #formulário de mensalidades
 
         elif frequencia == 'Múltipla Permanente':
 
@@ -252,9 +256,11 @@ def cadastrar():
 
                         data_financeira_trabalhada = data_financeira_trabalhada + relativedelta(months=1)
 
-                    df.to_csv('sheets/data.csv', index=False)
+                    df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
                     st.success(f'Movimentação (ID {ID}) cadastrada!')
+
+        #formulário de singulares
 
         elif frequencia == 'Singular': #se for um registro singular:
 
@@ -297,7 +303,7 @@ def cadastrar():
                                     },
                                     ignore_index=True)
 
-                    df.to_csv('sheets/data.csv', index=False)
+                    df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
                     st.success(f'Movimentação (ID {ID}) cadastrada!')
 
@@ -313,48 +319,49 @@ def excluir():
 
     if tipo_exclusao == 'ID':
 
-        index_para_excluir = st.selectbox('Indique a ID da movimentação a ser excluída:', df['ID'].unique() if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].unique())
+        with st.form(key = 'excluir por id'):
 
-        index_para_excluir = int(index_para_excluir)
+            index_para_excluir = st.selectbox('Indique a ID da movimentação a ser excluída:', df['ID'].unique() if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].unique())
 
-        excluir = st.button('Excluir')
+            index_para_excluir = int(index_para_excluir)
 
-        if excluir:
-            if exclusao_retroativa:
-                filtro = (df['ID'] == index_para_excluir)
-            else:
-                filtro = ((df['ID'] == index_para_excluir) & (df['Data']>= date.today()))
+            if st.form_submit_button(label='Excluir!'):
 
-            #excluindo uma singular
-            if df[filtro]['Frequência'].values[0] == 'Singular':
-                df = df.drop(df.index[filtro])
-                df.to_csv('sheets/data.csv', index=False)
+                if exclusao_retroativa:
+                    filtro = (df['ID'] == index_para_excluir)
+                else:
+                    filtro = ((df['ID'] == index_para_excluir) & (df['Data']>= date.today()))
 
-            # excluindo uma Múltipla
-            else:
-                 df = df.drop(df.index[filtro])
-                 df.to_csv('sheets/data.csv', index=False)
+                #excluindo uma singular
+                if df[filtro]['Frequência'].values[0] == 'Singular':
+                    df = df.drop(df.index[filtro])
+                    df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
-            if exclusao_retroativa:
-                st.success(f'Você excluiu todas as movimentações de ID {index_para_excluir}')
-            else:
-                st.success(f'Você excluiu todas as movimentações futuras de ID {index_para_excluir}')
+                # excluindo uma Múltipla
+                else:
+                     df = df.drop(df.index[filtro])
+                     df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
+
+                if exclusao_retroativa:
+                    st.success(f'Você excluiu todas as movimentações de ID {index_para_excluir}')
+                else:
+                    st.success(f'Você excluiu todas as movimentações futuras de ID {index_para_excluir}')
 
     elif tipo_exclusao == 'Index (número mais à esquerda da tabela, identificação única)':
 
-        index_para_excluir = st.selectbox('Indique o Index da movimentação a ser excluída:', df.index if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].index)
+        with st.form(key = 'excluir por index'):
 
-        index_para_excluir = int(index_para_excluir)
+            index_para_excluir = st.selectbox('Indique o Index da movimentação a ser excluída:', df.index if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].index)
 
-        excluir = st.button('Excluir')
+            index_para_excluir = int(index_para_excluir)
 
-        if excluir:
+            if st.form_submit_button(label='Excluir!'):
 
-            df = df.drop(index_para_excluir)
+                df = df.drop(index_para_excluir)
 
-            df.to_csv('sheets/data.csv', index=False)
+                df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
-            st.success(f'Você excluiu a movimentação de Index {index_para_excluir}')
+                st.success(f'Você excluiu a movimentação de Index {index_para_excluir}')
 
 def antecipador():
 
@@ -364,52 +371,54 @@ def antecipador():
 
     #selecionar apenas as compras com parcelas no futuro:
 
-    index_para_antecipar = st.selectbox('Indique a ID da movimentação que terá uma parcela a ser antecipada:', df[((df['Data']>=date.today()) & (df['Frequência']=='Múltipla Temporária'))]['ID'].unique())
+    index_para_antecipar = st.selectbox('Indique a ID da movimentação que terá uma parcela a ser antecipada:', np.insert((df[((df['Data']>=date.today()) & (df['Frequência']=='Múltipla Temporária'))]['ID'].unique()).astype(str),0,''))
 
-    parcela_para_antecipar = st.selectbox('Indique a parcela a ser antecipada:', df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Parcelamento'].values)
+    if index_para_antecipar != '':
 
-    st.write('Confirme a parcela a ser antecipada:')
+        with st.form('antecipador'):
 
-    st.write(df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))])
+            index_para_antecipar = int(index_para_antecipar)
 
-    #dar o drop neste index
+            parcela_para_antecipar = st.selectbox('Indique a parcela a ser antecipada:', df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Parcelamento'].values)
 
-    #e criar a linha nova antecipada
+            #st.write('Confirme a parcela a ser antecipada:')
 
-    data_financeira = st.date_input(label='Nova data da movimentação (data em que ocorrerá o débito ou crédito): ')
+            #st.write(df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))])
 
-    valor = st.number_input(label='Novo valor em R$ (com possível desconto):')
+            #dar o drop neste index
 
-    descricao = st.text_input(label='Descrição:')
+            #e criar a linha nova antecipada
 
-    if st.button('Cadastrar!'):
+            data_financeira = st.date_input(label='Nova data da movimentação (data em que ocorrerá o débito ou crédito): ')
 
-        if len(df['ID'].dropna()) == 0:
-            ID = 0
-        else:
-            ID = df['ID'].values[-1] + 1
+            valor = st.number_input(label='Novo valor em R$ (com possível desconto):')
 
-        df = df.append({'Data Cadastro': date.today(),
-                        'Data': data_financeira,
-                        'Fluxo': df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Fluxo'].values[0],
-                        'Frequência' : 'Antecipamento',
-                        'Valor' : valor if df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Fluxo'].values[0]=='Entrada' else -valor,
-                        'Instituição Financeira' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Instituição Financeira'].values[0],
-                        'Provedor' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Provedor'].values[0],
-                        'Descrição': f'Parcela {parcela_para_antecipar} antecipada da movimentação {index_para_antecipar} - '+ descricao,
-                        'ID': ID
-                        },
-                        ignore_index=True)
+            descricao = st.text_input(label='Descrição:')
 
-        df.drop(df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))].index, inplace=True)
+            if st.form_submit_button(label='Antecipar!'):
 
-        df.to_csv('sheets/data.csv', index=False)
+                if len(df['ID'].dropna()) == 0:
+                    ID = 0
+                else:
+                    ID = df['ID'].values[-1] + 1
 
-        st.success('Movimentação realizada com sucesso!')
+                df = df.append({'Data Cadastro': date.today(),
+                                'Data': data_financeira,
+                                'Fluxo': df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Fluxo'].values[0],
+                                'Frequência' : 'Antecipamento',
+                                'Valor' : valor if df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Fluxo'].values[0]=='Entrada' else -valor,
+                                'Instituição Financeira' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Instituição Financeira'].values[0],
+                                'Provedor' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Provedor'].values[0],
+                                'Descrição': f'Parcela {parcela_para_antecipar} antecipada da movimentação {index_para_antecipar} - '+ descricao,
+                                'ID': ID
+                                },
+                                ignore_index=True)
 
+                df.drop(df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))].index, inplace=True)
 
+                df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
-    pass
+                st.success('Movimentação realizada com sucesso!')
 
 
 def atualizar_dados():
