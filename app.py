@@ -37,7 +37,7 @@ def carregar_dados():
 
     data_parser = lambda x: pd.datetime.strptime(x[:10], '%Y-%m-%d')
 
-    df = pd.read_excel('sheets/data.xlsx', parse_dates=['Data','Data Cadastro','Data Realizada'], date_parser=data_parser, encoding="ISO-8859-1") #e então carregue este arquivo
+    df = pd.read_excel('sheets/data.xlsx', parse_dates=['Data','Data Cadastro','Data Realizada'], date_parser=data_parser, encoding="ISO-8859-1", engine='openpyxl') #e então carregue este arquivo
 
     try:
         df['Data'] = df['Data'].dt.date
