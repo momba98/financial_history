@@ -9,6 +9,11 @@ import xlrd
 import numpy as np
 import subprocess
 from bokeh.plotting import figure
+from bokeh.models import ColumnDataSource
+from bokeh.models import HoverTool
+import bokeh.models as bkm
+import bokeh.plotting as bkp
+from bokeh.models import NumeralTickFormatter
 
 
 st.set_page_config(page_title='Financial History', page_icon="https://static.streamlit.io/examples/cat.jpg", layout='wide', initial_sidebar_state='auto')
@@ -392,21 +397,49 @@ def antecipador():
 
     #selecionar apenas as compras com parcelas no futuro:
 
-    index_para_antecipar = st.selectbox('Indique a ID da movimentação que terá uma parcela a ser antecipada:', np.insert((df[((df['Data']>=date.today()) & (df['Frequência']=='Múltipla Temporária'))]['ID'].unique()).astype(str),0,''))
+    index_para_antecipar = st.selectbox(
+        'Indique a ID da movimentação que terá uma parcela a ser antecipada:',
+        np.insert((df[((df['Data']>=date.today()) & (df['Frequência']=='Múltipla Temporária'))]['ID'].unique()).astype(str),0,'')
+    )
 
     if index_para_antecipar != '':
 
+        index_para_antecipar = int(index_para_antecipar)
+
+        parcelas_possiveis = range(1,len(df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Parcelamento']),1)
+
+        parcela_comeco = int(df[(df['ID']==index_para_antecipar)]['Parcelamento'].values[0].split('/')[-1])
+
+        i = 1
+
+        lista_opcoes = []
+
+        for a in parcelas_possiveis:
+            lista_opcoes.append(str((a, ' - referente à parcela', list(np.arange(parcela_comeco,parcela_comeco-i,-1)))))
+            i += 1
+
+        trocas = {
+            "'": '',
+            ',': '',
+            '[': '',
+            ']': '',
+            '(': '',
+            ')': '',
+        }
+
+        for a,i in enumerate(lista_opcoes):
+            for crt_errado,crt_certo in trocas.items():
+                lista_opcoes[a] = lista_opcoes[a].replace(crt_errado, crt_certo)
+
         with st.form('antecipador'):
 
-            index_para_antecipar = int(index_para_antecipar)
+            parcela_para_antecipar = st.selectbox('Indique quantas parcelas a serem antecipadas:', lista_opcoes)
 
-            parcela_para_antecipar = st.selectbox('Indique a parcela a ser antecipada:', df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Parcelamento'].values)
-
-            data_financeira = st.date_input(label='Nova data da movimentação (data em que ocorrerá o débito ou crédito): ')
-
-            valor = st.number_input(label='Novo valor em R$ (com possível desconto):')
+            valor = st.number_input(label='Indique o valor de desconto total em R$:', help='Caso você esteja adiantando apenas uma parcela, este valor será o desconto desta parcela. Caso seja mais de uma, somar todos os valores de desconto.')
 
             descricao = st.text_input(label='Descrição:')
+
+            #continuar daqui! fazer a transação de fato.
 
             if st.form_submit_button(label='Antecipar!'):
 
@@ -768,8 +801,13 @@ def fluxo_de_caixa():
             else: #se não estiver, adicione
                 #if len(tuple(checar_casos.split(' ')))==2: #desde que tenha apenas
                 m_indx.append(tuple(checar_casos.split('-')))
-        except: # se nao der (por exemplo, quando é nan, avise.)
+        except:
             pass
+
+    try:
+        m_indx.remove(('Transferência','Transferência'))
+    except:
+        pass
 
     m_indx.sort()
 
@@ -833,11 +871,15 @@ def fluxo_de_caixa():
             except:
                 tabela_fluxo_anual.loc[fluxo_prov,ano] = 0
 
-        tabela_fluxo_anual.loc[('', 'Total'),ano] = tabela_fluxo_anual[ano].sum()
 
-    tabela_fluxo_anual.loc[('','Total')] = tabela_fluxo_anual.loc[('','Total')].cumsum()
+        tabela_fluxo_anual.loc[('Total', 'Entrada'),ano] = tabela_fluxo_anual[tabela_fluxo_anual.index.get_level_values(0) == 'Entrada'][ano].sum()
+        tabela_fluxo_anual.loc[('Total', 'Saída'),ano] = tabela_fluxo_anual[tabela_fluxo_anual.index.get_level_values(0) == 'Saída'][ano].sum()
+        tabela_fluxo_anual.loc[('Total', 'Período'),ano] = tabela_fluxo_anual[tabela_fluxo_anual.index.get_level_values(0) != 'Total'][ano].sum()
+        tabela_fluxo_anual.loc[('Total', 'Acumulado'),ano] = tabela_fluxo_anual[tabela_fluxo_anual.index.get_level_values(0) != 'Total'][ano].sum()
 
-    saldos_previos = tabela_fluxo_anual.loc[('', 'Total')].to_dict()
+    tabela_fluxo_anual.loc[('Total','Acumulado')] = tabela_fluxo_anual.loc[('Total','Acumulado')].cumsum()
+
+    saldos_previos = tabela_fluxo_anual.loc[('Total', 'Acumulado')].to_dict()
 
     if range == 'Anual':
 
@@ -845,7 +887,7 @@ def fluxo_de_caixa():
 
         table = tabela_fluxo_anual
         x_axis = df_fc['Data'].dt.year.unique().astype('str')
-        line = table.loc[('','Total')]
+        line = table.loc[('Total','Acumulado')]
 
     elif range == 'Mensal':
 
@@ -882,22 +924,22 @@ def fluxo_de_caixa():
                 except:
                     pass
 
-            tabela_fluxo_mensal.loc[('', 'Total'),mes] = tabela_fluxo_mensal[mes].sum() + saldo
+            tabela_fluxo_mensal.loc[('Total', 'Entrada'),mes] = tabela_fluxo_mensal[tabela_fluxo_mensal.index.get_level_values(0) == 'Entrada'][mes].sum()
+            tabela_fluxo_mensal.loc[('Total', 'Saída'),mes] = tabela_fluxo_mensal[tabela_fluxo_mensal.index.get_level_values(0) == 'Saída'][mes].sum()
+            tabela_fluxo_mensal.loc[('Total', 'Período'),mes] = tabela_fluxo_mensal[tabela_fluxo_mensal.index.get_level_values(0) != 'Total'][mes].sum()
+            tabela_fluxo_mensal.loc[('Total', 'Acumulado'),mes] = tabela_fluxo_mensal[tabela_fluxo_mensal.index.get_level_values(0) != 'Total'][mes].sum() + saldo
 
-        tabela_fluxo_mensal.loc[('','Total')] = tabela_fluxo_mensal.loc[('','Total')].cumsum()
+        tabela_fluxo_mensal.loc[('Total','Acumulado')] = tabela_fluxo_mensal.loc[('Total','Acumulado')].cumsum()
 
         table = tabela_fluxo_mensal
         x_axis = meses
-        line = table.loc[('','Total')]
+        line = table.loc[('Total','Acumulado')]
 
     #tudo que é comum aos dois
 
     acumulado = st.checkbox('Visualizar linha de saldo acumulado', True)
 
     teste = table.T
-
-    teste[('Totais', 'Entrada')] = teste['Entrada'].sum(axis=1)
-    teste[('Totais', 'Saída')] = teste['Saída'].sum(axis=1)
 
     teste.replace(0,np.nan, inplace=True)
 
@@ -935,17 +977,12 @@ def fluxo_de_caixa():
 
     for cr_pct in teste.columns:
         if cr_pct[0] == 'e':
-            teste['pct'+cr_pct] = teste[cr_pct]/teste['totaisentrada']
+            teste['pct'+cr_pct] = teste[cr_pct]/teste['totalentrada']
 
         elif cr_pct[0] == 's':
-            teste['pct'+cr_pct] = teste[cr_pct]/teste['totaissaida']
+            teste['pct'+cr_pct] = teste[cr_pct]/teste['totalsaida']
         else:
             pass
-
-    from bokeh.models import ColumnDataSource
-    from bokeh.models import HoverTool
-    import bokeh.models as bkm
-    import bokeh.plotting as bkp
 
     source = bkm.ColumnDataSource(data=teste)
 
@@ -959,7 +996,7 @@ def fluxo_de_caixa():
     info_baixa = bkm.Scatter(
         x='index',
         marker='diamond',
-        y='totaissaida',
+        y='totalsaida',
         line_width=15,
         fill_color='rgb(135, 32, 32)',
         line_color ='rgb(135, 32, 32)',
@@ -976,7 +1013,7 @@ def fluxo_de_caixa():
     keys = [k.replace('pctsaida', '').capitalize() for k in dict(source.data).keys() if k[:8] == 'pctsaida']
 
     keys.append('Total')
-    arr_keys.append('@'+'totaissaida'+'{$ 0.00}')
+    arr_keys.append('@'+'totalsaida'+'{$ 0.00}')
 
     tt_s = dict(zip(keys,arr_keys))
 
@@ -989,11 +1026,11 @@ def fluxo_de_caixa():
     baixa = bkm.VBar(
         x='index',
         bottom=0.,
-        top='totaissaida',
+        top='totalsaida',
         line_width=30,
         #source=source,
         fill_color='rgb(135, 32, 32)',
-        line_color ='rgb(135, 32, 32)'
+        line_color ='rgb(135, 32, 32)',
     )
 
     baixa_r = p.add_glyph(source_or_glyph=source, glyph=baixa)
@@ -1003,7 +1040,7 @@ def fluxo_de_caixa():
     info_alta = bkm.Scatter(
         x='index',
         marker='diamond',
-        y='totaisentrada',
+        y='totalentrada',
         line_width=15,
         fill_color='rgb(150, 150, 150)',
         line_color ='rgb(150, 150, 150)',
@@ -1020,7 +1057,7 @@ def fluxo_de_caixa():
     keys = [k.replace('pctentrada', '').capitalize() for k in dict(source.data).keys() if k[:8] == 'pctentra']
 
     keys.append('Total')
-    arr_keys.append('@'+'totaisentrada'+'{$ 0.00}')
+    arr_keys.append('@'+'totalentrada'+'{$ 0.00}')
 
     tt_e = dict(zip(keys,arr_keys))
 
@@ -1032,7 +1069,7 @@ def fluxo_de_caixa():
     alta = bkm.VBar(
         x='index',
         bottom=0.,
-        top='totaisentrada',
+        top='totalentrada',
         line_width=30,
         #source=source,
         fill_color='rgb(32, 135, 60)',
@@ -1041,13 +1078,27 @@ def fluxo_de_caixa():
 
     alta_r = p.add_glyph(source_or_glyph=source, glyph=alta)
 
+    # BARRA DE SALDO DO MÊS
+
+    saldo = bkm.VBar(
+        x='index',
+        bottom=0.,
+        top='totalperiodo',
+        line_width=7.5,
+        #source=source,
+        fill_color='rgba(255, 135, 60, 0.2)',
+        line_color ='rgba(255, 255, 255, 0.2)'
+    )
+
+    saldo_r = p.add_glyph(source_or_glyph=source, glyph=saldo)
+
     # LINHA DE ACUMULADO
 
     if acumulado:
 
         info_acum = bkm.Line(
             x='index',
-            y='total',
+            y='totalacumulado',
             #line_width=15,
         )
 
@@ -1057,7 +1108,7 @@ def fluxo_de_caixa():
 
         arr_keys = ['@'+ak+'{$ 0.00}' for ak in keys]
 
-        keys = ['Acumulado Total', 'Entrada Período', 'Saída Período']
+        keys = ['Entrada Período', 'Saída Período', 'Período Total', 'Acumulado Total']
 
         tt_t = dict(zip(keys,arr_keys))
 
@@ -1069,8 +1120,6 @@ def fluxo_de_caixa():
     else:
         pass
 
-    from bokeh.models import NumeralTickFormatter
-
     p.yaxis[0].ticker.desired_num_ticks = 7
     p.yaxis.formatter=NumeralTickFormatter(format="$ 0")
     p.yaxis.major_tick_line_color = None  # turn off y-axis major ticks
@@ -1078,6 +1127,14 @@ def fluxo_de_caixa():
     p.outline_line_alpha = 0
     p.xaxis.major_label_text_font_size = '12pt'
     p.yaxis.major_label_text_font_size = '12pt'
+
+    from bokeh.models import ColumnDataSource, DataRange1d, Plot, LinearAxis, Grid, Legend, LegendItem
+
+    #li1 = LegendItem(label='red', renderers=[p.renderers[0]])
+    #li2 = LegendItem(label='blue', renderers=[p.renderers[1]])
+    #li3 = LegendItem(label='purple', renderers=[p.renderers[2]])
+    #legend1 = Legend(items=[li1, li2, li3], location='top_right')
+    #p.add_layout(legend1)
 
     st.bokeh_chart(
         p,
@@ -1133,8 +1190,6 @@ def visual_diario():
             data = None,
             columns = None,
         )
-
-
 
         for coluna in range(1,raw_data.groupby('Data Realizada').count()['ID'].max()+1,1):
             visual_diario[f'Valor {coluna}'] = np.nan

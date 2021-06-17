@@ -23,6 +23,7 @@ def carregar_dados():
         file = pd.DataFrame(columns=['ID',
                                     'Data Cadastro',
                                     'Data',
+                                    'Data Realizada',
                                     'Fluxo',
                                     'Frequência',
                                     'Valor',
@@ -32,15 +33,16 @@ def carregar_dados():
                                     'Parcelamento',
                                     ])
 
-        file.to_csv('sheets/data.csv', index=False) #crie este arquivo
+        file.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1") #crie este arquivo
 
     data_parser = lambda x: pd.datetime.strptime(x[:10], '%Y-%m-%d')
 
-    df = pd.read_csv('sheets/data.csv', parse_dates=['Data','Data Cadastro'],date_parser=data_parser) #e então carregue este arquivo
+    df = pd.read_excel('sheets/data.xlsx', parse_dates=['Data','Data Cadastro','Data Realizada'], date_parser=data_parser, encoding="ISO-8859-1", engine='openpyxl') #e então carregue este arquivo
 
     try:
         df['Data'] = df['Data'].dt.date
         df['Data Cadastro'] = df['Data Cadastro'].dt.date
+        df['Data Realizada'] = df['Data Realizada'].dt.date
     except:
         pass
 
@@ -62,7 +64,7 @@ def mostrar_dados():
 
             df['Valor'] = df['Valor'].map('{:,.2f}'.format)
 
-            st.dataframe(df.drop(['Data Cadastro', 'Parcelamento'], axis=1))
+            st.dataframe(df.drop(['Data Cadastro', 'Parcelamento', 'Data Realizada'], axis=1))
 
 def cadastrar():
 
@@ -70,57 +72,33 @@ def cadastrar():
 
     carregar_dados()
 
-    #formulário
+    fluxo = st.selectbox(label='Fluxo da movimentação: ', options=['', 'Entrada', 'Saída', 'Transferência'])
 
-    with st.form(key='Cadastre uma nova movimentação'):
+    #formulário de transferência
 
-        data_financeira = st.date_input(label='Data da movimentação: ')
+    if fluxo == 'Transferência':
 
-        fluxo = st.selectbox(label='Fluxo da movimentação: ', options=['','Entrada', 'Saída', 'Transferência'])
+        with st.form(key='Cadastre uma nova transferência'):
 
-        frequencia = st.selectbox(label='Frequência da movimentação: ',
-                                  options=['','Singular', 'Múltipla Temporária', 'Múltipla Permanente'] if fluxo!='Transferência' else ['Singular'])
+            data_financeira = st.date_input(label='Data da movimentação: ')
 
-        if frequencia == 'Múltipla Temporária':
+            frequencia = 'Singular'
 
-            parcelamento = st.text_input(label='Indique em quantas vezes o valor foi parcelado:', value='0')
-            parcelamento = int(parcelamento)
+            valor = st.number_input(label='Valor (R$):')
 
-        elif frequencia == 'Múltipla Permanente':
+            instituicao_financeira = st.selectbox(
+                label='Instituição Financeira (onde a quantia foi ou estava?)',
+                options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,'')
+            )
 
-            tempo = st.text_input(label='Indique em meses (aproximadamente) quanto tempo esta movimentação perdurará:', value='0')
-            tempo = int(tempo)
+            instituicao_financeira_2 = st.selectbox(
+                label='Para qual Instituição Financeira o valor foi destiando?',
+                options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,'')
+            )
 
-        valor = st.number_input(label='Valor (R$):')
+            data_cadastro = date.today()
 
-        instituicao_financeira = st.selectbox(
-            label='Instituição Financeira (onde a quantia foi ou estava?)',
-            options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,'')
-        )
-
-        if fluxo != 'Transferência':
-
-            provedor = st.selectbox(
-                label = 'Provedor (quem foi o responsável pela movimentação? Nelogica, pai, mãe etc.):',
-                options = np.insert(pd.read_csv(f"listas/provedores_entrada.csv", encoding="ISO-8859-1").values,0,'') if fluxo == 'Entrada' else np.insert(pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values,0,'')
-                )
-
-            descricao = st.text_input(label='Descrição:')
-
-        else:
-
-            instituicao_financeira_2 = st.selectbox(label='Para qual Instituição Financeira o valor foi destiando?', options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,''))
-
-
-        data_cadastro = date.today()
-
-        # botão cadastrar
-
-        #cadastrar = st.button('Cadastrar')
-
-        if st.form_submit_button(label='Cadastrar!'):
-
-            if fluxo == 'Transferência': #se for Transferência, tenho que fazer algumas modificações nas info (ficou feio, logo arrumo):
+            if st.form_submit_button(label='Cadastrar!'):
 
                 provedor = None
                 descricao = None
@@ -134,79 +112,208 @@ def cadastrar():
 
                 df = df.append({'Data Cadastro': data_cadastro,
                                 'Data': data_financeira,
+                                'Data Realizada': data_financeira,
                                 'Fluxo': fluxo,
                                 'Frequência' : frequencia,
                                 'Valor' : -valor,
                                 'Instituição Financeira' : instituicao_financeira,
+                                'Provedor': 'Transferência',
                                 'Descrição': f'Saída {instituicao_financeira} para {instituicao_financeira_2}',
                                 'ID': ID
                                 },
                                 ignore_index=True)
 
-                df.to_csv('sheets/data.csv', index=False)
+                df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
-                #chegada do um banco para o outro
+                #chegada de um banco para o outro
 
                 df = df.append({'Data Cadastro': data_cadastro,
                                 'Data': data_financeira,
+                                'Data Realizada': data_financeira,
                                 'Fluxo': fluxo,
                                 'Frequência' : frequencia,
                                 'Valor' : +valor,
                                 'Instituição Financeira' : instituicao_financeira_2,
+                                'Provedor': 'Transferência',
                                 'Descrição': f'Entrada {instituicao_financeira_2} de {instituicao_financeira}',
                                 'ID': ID
                                 },
                                 ignore_index=True)
 
-                df.to_csv('sheets/data.csv', index=False)
+                df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
                 st.success(f'Movimentação (ID {ID}) cadastrada!')
 
-            elif frequencia == 'Múltipla Temporária': #se for parcelamento, tenho que fazer algumas modificações nas info:
+    elif ((fluxo == 'Entrada') | (fluxo == 'Saída')):
 
-                #olhar para o meu df e ver qual é o último parcelamento, nomear este como o último + 1
+        if fluxo == 'Entrada':
+            texto_inst_fin = 'em qual banco o valor entrará?'
+        else:
+            texto_inst_fin = 'em qual banco o valor sairá?'
 
-                if len(df['ID'].dropna()) == 0:
-                    ID = 0
-                else:
-                    ID = df['ID'].values[-1] + 1
 
-                data_financeira_trabalhada = data_financeira
+        frequencia = st.selectbox(
+            label='Frequência da movimentação: ',
+            options=['','Singular', 'Múltipla Temporária', 'Múltipla Permanente']
+        )
 
-                for registro in range(1,parcelamento+1,1):
+        #formulário de parcelamentos
+
+        if frequencia == 'Múltipla Temporária':
+
+            with st.form(key='Cadastre uma nova movimentação'):
+
+                data_financeira = st.date_input(label='Data financeira da movimentação (primeiro dia em que a entrada/saída será efetivada): ')
+
+                data_realizada = st.date_input(label='Data de realização da movimentação (dia em que a movimentaçã foi realizada): ')
+
+                parcelamento = st.text_input(label='Indique em quantas vezes o valor foi parcelado:', value='0')
+                parcelamento = int(parcelamento)
+
+                valor = st.number_input(label='Valor (R$):')
+
+                instituicao_financeira = st.selectbox(
+                    label=f'Instituição Financeira ({texto_inst_fin})',
+                    options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,'')
+                )
+
+                provedor = st.selectbox(
+                    label = 'Provedor (o que foi responsável pela movimentação?):',
+                    options = np.insert(
+                        pd.read_csv(f"listas/provedores_entrada.csv", encoding="ISO-8859-1").values,0,'') if fluxo == 'Entrada' else np.insert(pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values,0,''
+                        )
+                    )
+
+                descricao = st.text_input(label='Descrição:')
+
+                data_cadastro = date.today()
+
+                if st.form_submit_button(label='Cadastrar!'):
+
+                    #olhar para o meu df e ver qual é o último parcelamento, nomear este como o último + 1
+
+                    if len(df['ID'].dropna()) == 0:
+                        ID = 0
+                    else:
+                        ID = df['ID'].values[-1] + 1
+
+                    data_financeira_trabalhada = data_financeira
+
+                    for registro in range(1,parcelamento+1,1):
+
+                        df = df.append({'Data Cadastro': data_cadastro,
+                                        'Data': data_financeira_trabalhada,
+                                        'Data Realizada': data_realizada,
+                                        'Fluxo': fluxo,
+                                        'Frequência' : frequencia,
+                                        'Parcelamento' : str(registro)+'/'+str(parcelamento),
+                                        'Valor' : valor/parcelamento if fluxo=='Entrada' else -valor/parcelamento,
+                                        'Instituição Financeira' : instituicao_financeira,
+                                        'Provedor' : provedor,
+                                        'Descrição': descricao + '(PARCELA ' +str(registro) + ')',
+                                        'ID': ID
+                                        },
+                                        ignore_index=True)
+
+                        data_financeira_trabalhada = data_financeira_trabalhada + relativedelta(months=1)
+
+                    df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
+
+                    st.success(f'Movimentação (ID {ID}) cadastrada!')
+
+        #formulário de mensalidades
+
+        elif frequencia == 'Múltipla Permanente':
+
+            with st.form(key='Cadastre uma nova movimentação'):
+
+                data_financeira = st.date_input(label='Data financeira da movimentação (primeiro dia em que a entrada/saída será efetivada, repetirá mensalmente): ')
+
+                tempo = st.text_input(label='Indique em meses (aproximadamente) quanto tempo esta movimentação perdurará:', value='0')
+                tempo = int(tempo)
+
+                valor = st.number_input(label='Valor (R$):')
+
+                instituicao_financeira = st.selectbox(
+                    label=f'Instituição Financeira ({texto_inst_fin})',
+                    options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,'')
+                )
+
+                provedor = st.selectbox(
+                    label = 'Provedor (o que foi responsável pela movimentação?):',
+                    options = np.insert(pd.read_csv(f"listas/provedores_entrada.csv", encoding="ISO-8859-1").values,0,'') if fluxo == 'Entrada' else np.insert(pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values,0,'')
+                    )
+
+                descricao = st.text_input(label='Descrição:')
+
+                data_cadastro = date.today()
+
+                if st.form_submit_button(label='Cadastrar!'):
+
+                    if len(df['ID'].dropna()) == 0:
+                        ID = 0
+                    else:
+                        ID = df['ID'].values[-1] + 1
+
+                    data_financeira_trabalhada = data_financeira
+
+                    for registro in range(1,tempo+1,1): #vou cadastrar para até 3 anos para frente
+
+                        df = df.append({'Data Cadastro': data_cadastro,
+                                        'Data': data_financeira_trabalhada,
+                                        'Data Realizada': data_financeira_trabalhada,
+                                        'Fluxo': fluxo,
+                                        'Frequência' : frequencia,
+                                        'Valor' : valor if fluxo=='Entrada' else -valor,
+                                        'Instituição Financeira' : instituicao_financeira,
+                                        'Provedor' : provedor,
+                                        'Descrição': descricao,
+                                        'ID': ID
+                                        },
+                                        ignore_index=True)
+
+                        data_financeira_trabalhada = data_financeira_trabalhada + relativedelta(months=1)
+
+                    df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
+
+                    st.success(f'Movimentação (ID {ID}) cadastrada!')
+
+        #formulário de singulares
+
+        elif frequencia == 'Singular': #se for um registro singular:
+
+            with st.form(key='Cadastre uma nova movimentação'):
+
+                data_financeira = st.date_input(label='Data financeira da movimentação (dia em que a entrada/saída será efetivada): ')
+
+                data_realizada = st.date_input(label='Data de realização da movimentação (dia em que a movimentaçã foi realizada): ')
+
+                valor = st.number_input(label='Valor (R$):')
+
+                instituicao_financeira = st.selectbox(
+                    label=f'Instituição Financeira ({texto_inst_fin})',
+                    options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,'')
+                )
+
+                provedor = st.selectbox(
+                    label = 'Provedor (o foi responsável pela movimentação?):',
+                    options = np.insert(pd.read_csv(f"listas/provedores_entrada.csv", encoding="ISO-8859-1").values,0,'') if fluxo == 'Entrada' else np.insert(pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values,0,'')
+                    )
+
+                descricao = st.text_input(label='Descrição:')
+
+                data_cadastro = date.today()
+
+                if st.form_submit_button(label='Cadastrar!'):
+
+                    if len(df['ID'].dropna()) == 0:
+                        ID = 0
+                    else:
+                        ID = df['ID'].values[-1] + 1
 
                     df = df.append({'Data Cadastro': data_cadastro,
-                                    'Data': data_financeira_trabalhada,
-                                    'Fluxo': fluxo,
-                                    'Frequência' : frequencia,
-                                    'Parcelamento' : str(registro)+'/'+str(parcelamento),
-                                    'Valor' : valor/parcelamento if fluxo=='Entrada' else -valor/parcelamento,
-                                    'Instituição Financeira' : instituicao_financeira,
-                                    'Provedor' : provedor,
-                                    'Descrição': descricao + '(PARCELA ' +str(registro) + ')',
-                                    'ID': ID
-                                    },
-                                    ignore_index=True)
-
-                    data_financeira_trabalhada = data_financeira_trabalhada + relativedelta(months=1)
-
-                df.to_csv('sheets/data.csv', index=False)
-
-                st.success(f'Movimentação (ID {ID}) cadastrada!')
-
-            elif frequencia == 'Múltipla Permanente': #se for mensalidade, tenho que fazer algumas modificações nas info:
-
-                if len(df['ID'].dropna()) == 0:
-                    ID = 0
-                else:
-                    ID = df['ID'].values[-1] + 1
-
-                data_financeira_trabalhada = data_financeira
-
-                for registro in range(1,tempo+1,1): #vou cadastrar para até 3 anos para frente
-
-                    df = df.append({'Data Cadastro': data_cadastro,
-                                    'Data': data_financeira_trabalhada,
+                                    'Data': data_financeira,
+                                    'Data Realizada': data_realizada,
                                     'Fluxo': fluxo,
                                     'Frequência' : frequencia,
                                     'Valor' : valor if fluxo=='Entrada' else -valor,
@@ -217,35 +324,9 @@ def cadastrar():
                                     },
                                     ignore_index=True)
 
-                    data_financeira_trabalhada = data_financeira_trabalhada + relativedelta(months=1)
+                    df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
-                df.to_csv('sheets/data.csv', index=False)
-
-                st.success(f'Movimentação (ID {ID}) cadastrada!')
-
-
-            else: #se for um registro singular:
-
-                if len(df['ID'].dropna()) == 0:
-                    ID = 0
-                else:
-                    ID = df['ID'].values[-1] + 1
-
-                df = df.append({'Data Cadastro': data_cadastro,
-                                'Data': data_financeira,
-                                'Fluxo': fluxo,
-                                'Frequência' : frequencia,
-                                'Valor' : valor if fluxo=='Entrada' else -valor,
-                                'Instituição Financeira' : instituicao_financeira,
-                                'Provedor' : provedor,
-                                'Descrição': descricao,
-                                'ID': ID
-                                },
-                                ignore_index=True)
-
-                df.to_csv('sheets/data.csv', index=False)
-
-                st.success(f'Movimentação (ID {ID}) cadastrada!')
+                    st.success(f'Movimentação (ID {ID}) cadastrada!')
 
 def excluir():
 
@@ -259,48 +340,49 @@ def excluir():
 
     if tipo_exclusao == 'ID':
 
-        index_para_excluir = st.selectbox('Indique a ID da movimentação a ser excluída:', df['ID'].unique() if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].unique())
+        with st.form(key = 'excluir por id'):
 
-        index_para_excluir = int(index_para_excluir)
+            index_para_excluir = st.selectbox('Indique a ID da movimentação a ser excluída:', df['ID'].unique() if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].unique())
 
-        excluir = st.button('Excluir')
+            index_para_excluir = int(index_para_excluir)
 
-        if excluir:
-            if exclusao_retroativa:
-                filtro = (df['ID'] == index_para_excluir)
-            else:
-                filtro = ((df['ID'] == index_para_excluir) & (df['Data']>= date.today()))
+            if st.form_submit_button(label='Excluir!'):
 
-            #excluindo uma singular
-            if df[filtro]['Frequência'].values[0] == 'Singular':
-                df = df.drop(df.index[filtro])
-                df.to_csv('sheets/data.csv', index=False)
+                if exclusao_retroativa:
+                    filtro = (df['ID'] == index_para_excluir)
+                else:
+                    filtro = ((df['ID'] == index_para_excluir) & (df['Data']>= date.today()))
 
-            # excluindo uma Múltipla
-            else:
-                 df = df.drop(df.index[filtro])
-                 df.to_csv('sheets/data.csv', index=False)
+                #excluindo uma singular
+                if df[filtro]['Frequência'].values[0] == 'Singular':
+                    df = df.drop(df.index[filtro])
+                    df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
-            if exclusao_retroativa:
-                st.success(f'Você excluiu todas as movimentações de ID {index_para_excluir}')
-            else:
-                st.success(f'Você excluiu todas as movimentações futuras de ID {index_para_excluir}')
+                # excluindo uma Múltipla
+                else:
+                     df = df.drop(df.index[filtro])
+                     df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
+
+                if exclusao_retroativa:
+                    st.success(f'Você excluiu todas as movimentações de ID {index_para_excluir}')
+                else:
+                    st.success(f'Você excluiu todas as movimentações futuras de ID {index_para_excluir}')
 
     elif tipo_exclusao == 'Index (número mais à esquerda da tabela, identificação única)':
 
-        index_para_excluir = st.selectbox('Indique o Index da movimentação a ser excluída:', df.index if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].index)
+        with st.form(key = 'excluir por index'):
 
-        index_para_excluir = int(index_para_excluir)
+            index_para_excluir = st.selectbox('Indique o Index da movimentação a ser excluída:', df.index if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].index)
 
-        excluir = st.button('Excluir')
+            index_para_excluir = int(index_para_excluir)
 
-        if excluir:
+            if st.form_submit_button(label='Excluir!'):
 
-            df = df.drop(index_para_excluir)
+                df = df.drop(index_para_excluir)
 
-            df.to_csv('sheets/data.csv', index=False)
+                df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
-            st.success(f'Você excluiu a movimentação de Index {index_para_excluir}')
+                st.success(f'Você excluiu a movimentação de Index {index_para_excluir}')
 
 def antecipador():
 
@@ -310,52 +392,47 @@ def antecipador():
 
     #selecionar apenas as compras com parcelas no futuro:
 
-    index_para_antecipar = st.selectbox('Indique a ID da movimentação que terá uma parcela a ser antecipada:', df[((df['Data']>=date.today()) & (df['Frequência']=='Múltipla Temporária'))]['ID'].unique())
+    index_para_antecipar = st.selectbox('Indique a ID da movimentação que terá uma parcela a ser antecipada:', np.insert((df[((df['Data']>=date.today()) & (df['Frequência']=='Múltipla Temporária'))]['ID'].unique()).astype(str),0,''))
 
-    parcela_para_antecipar = st.selectbox('Indique a parcela a ser antecipada:', df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Parcelamento'].values)
+    if index_para_antecipar != '':
 
-    st.write('Confirme a parcela a ser antecipada:')
+        with st.form('antecipador'):
 
-    st.write(df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))])
+            index_para_antecipar = int(index_para_antecipar)
 
-    #dar o drop neste index
+            parcela_para_antecipar = st.selectbox('Indique a parcela a ser antecipada:', df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Parcelamento'].values)
 
-    #e criar a linha nova antecipada
+            data_financeira = st.date_input(label='Nova data da movimentação (data em que ocorrerá o débito ou crédito): ')
 
-    data_financeira = st.date_input(label='Nova data da movimentação (data em que ocorrerá o débito ou crédito): ')
+            valor = st.number_input(label='Novo valor em R$ (com possível desconto):')
 
-    valor = st.number_input(label='Novo valor em R$ (com possível desconto):')
+            descricao = st.text_input(label='Descrição:')
 
-    descricao = st.text_input(label='Descrição:')
+            if st.form_submit_button(label='Antecipar!'):
 
-    if st.button('Cadastrar!'):
+                if len(df['ID'].dropna()) == 0:
+                    ID = 0
+                else:
+                    ID = df['ID'].values[-1] + 1
 
-        if len(df['ID'].dropna()) == 0:
-            ID = 0
-        else:
-            ID = df['ID'].values[-1] + 1
+                df = df.append({'Data Cadastro': date.today(),
+                                'Data': data_financeira,
+                                'Data Realizada': data_financeira,
+                                'Fluxo': df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Fluxo'].values[0],
+                                'Frequência' : 'Antecipamento',
+                                'Valor' : valor if df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Fluxo'].values[0]=='Entrada' else -valor,
+                                'Instituição Financeira' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Instituição Financeira'].values[0],
+                                'Provedor' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Provedor'].values[0],
+                                'Descrição': f'Parcela {parcela_para_antecipar} antecipada da movimentação {index_para_antecipar} - '+ descricao,
+                                'ID': ID
+                                },
+                                ignore_index=True)
 
-        df = df.append({'Data Cadastro': date.today(),
-                        'Data': data_financeira,
-                        'Fluxo': df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Fluxo'].values[0],
-                        'Frequência' : 'Antecipamento',
-                        'Valor' : valor if df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Fluxo'].values[0]=='Entrada' else -valor,
-                        'Instituição Financeira' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Instituição Financeira'].values[0],
-                        'Provedor' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Provedor'].values[0],
-                        'Descrição': f'Parcela {parcela_para_antecipar} antecipada da movimentação {index_para_antecipar} - '+ descricao,
-                        'ID': ID
-                        },
-                        ignore_index=True)
+                df.drop(df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))].index, inplace=True)
 
-        df.drop(df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))].index, inplace=True)
+                df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
-        df.to_csv('sheets/data.csv', index=False)
-
-        st.success('Movimentação realizada com sucesso!')
-
-
-
-    pass
+                st.success('Movimentação realizada com sucesso!')
 
 
 def atualizar_dados():
@@ -399,10 +476,14 @@ def dados_com_filtros():
 
     if opcao_de_filtro == 'Datas':
 
-        tipo_data = st.selectbox('Selecione a data a ser filtrada:', ['Cadastro', 'Financeira'])
+        tipo_data = st.selectbox('Selecione a data a ser filtrada:', ['Cadastro', 'Financeira', 'Realização'])
 
         if tipo_data == 'Cadastro':
             a_data_e = 'Data Cadastro'
+
+        elif tipo_data == 'Realização':
+            a_data_e = 'Data Realizada'
+
         else:
             a_data_e = 'Data'
 
@@ -687,8 +768,13 @@ def fluxo_de_caixa():
             else: #se não estiver, adicione
                 #if len(tuple(checar_casos.split(' ')))==2: #desde que tenha apenas
                 m_indx.append(tuple(checar_casos.split('-')))
-        except: # se nao der (por exemplo, quando é nan, avise.)
+        except:
             pass
+
+    try:
+        m_indx.remove(('Transferência','Transferência'))
+    except:
+        pass
 
     m_indx.sort()
 
@@ -1009,89 +1095,113 @@ def fluxo_de_caixa():
 
 def visual_diario():
 
-    if st.checkbox('Adicionar filtro por Instituição Financeira'):
+    try:
 
-        ifescolhida = st.selectbox(
-            'Selecionar a Instiuição Financeira a ser filtrada:',
-            options=df['Instituição Financeira'].unique()
+        if st.checkbox('Adicionar filtro por Instituição Financeira'):
+
+            ifescolhida = st.selectbox(
+                'Selecionar a Instiuição Financeira a ser filtrada:',
+                options=df['Instituição Financeira'].unique()
+            )
+
+            filtro = df['Instituição Financeira'] == ifescolhida
+
+            texto = '- ' + ifescolhida.upper()
+
+        else:
+            filtro = df==df
+
+            texto = ''
+
+        col1, col2 = st.beta_columns(2)
+
+        ano = col1.selectbox(
+            'Selecione o ano para visualização:',
+             pd.to_datetime(df[filtro]['Data Realizada']).dt.year.unique()
         )
 
-        filtro = df['Instituição Financeira'] == ifescolhida
-
-        texto = '- ' + ifescolhida.upper()
-
-    else:
-        filtro = df==df
-
-        texto = ''
-
-    col1, col2 = st.beta_columns(2)
-
-    ano = col1.selectbox(
-        'Selecione o ano para visualização:',
-         pd.to_datetime(df[filtro]['Data']).dt.year.unique()
-    )
-
-    mes = col2.selectbox(
-        'Selecione o mês para visualização:',
-        np.sort(pd.to_datetime(df[filtro][pd.to_datetime(df[filtro]['Data']).dt.year==ano]['Data']).dt.month.unique())
-    )
-
-
-
-    format_dict = {}
-
-    raw_data = df[filtro][
-        (
-        (pd.to_datetime(df[filtro]['Data']).dt.month == mes) &
-        (pd.to_datetime(df[filtro]['Data']).dt.year == ano)
+        mes = col2.selectbox(
+            'Selecione o mês para visualização:',
+            np.sort(pd.to_datetime(df[filtro][pd.to_datetime(df[filtro]['Data Realizada']).dt.year==ano]['Data']).dt.month.unique())
         )
-    ].drop(['Data Cadastro'], axis='columns')
 
-    visual_diario = pd.DataFrame(
-        data = None,
-        columns = None,
-    )
+        format_dict = {}
 
-    for coluna in range(1,raw_data.groupby('Data').count()['ID'].max()+1,1):
-        visual_diario[f'Valor {coluna}'] = np.nan
-        visual_diario[f'Provedor {coluna}'] = np.nan
-        format_dict[f'Valor {coluna}'] = '{:,.2f}'
-        format_dict[f'Provedor {coluna}'] = '{:s}'
+        raw_data = df[filtro][
+            (
+            (pd.to_datetime(df[filtro]['Data Realizada']).dt.month == mes) &
+            (pd.to_datetime(df[filtro]['Data Realizada']).dt.year == ano)
+            )
+        ].drop(['Data Cadastro'], axis='columns')
 
-    for linha in range(1,pd.to_datetime(raw_data.iloc[0]['Data']).days_in_month,1):
-        visual_diario.loc[linha] = np.nan
+        visual_diario = pd.DataFrame(
+            data = None,
+            columns = None,
+        )
 
-    raw_data.sort_values('Data', inplace=True)
+        for coluna in range(1,raw_data.groupby('Data Realizada').count()['ID'].max()+1,1):
+            visual_diario[f'Valor {coluna}'] = np.nan
+            visual_diario[f'Provedor {coluna}'] = np.nan
+            format_dict[f'Valor {coluna}'] = '{:,.2f}'
+            format_dict[f'Provedor {coluna}'] = '{:s}'
 
-    dia = 0
+        for linha in range(1,pd.to_datetime(raw_data.iloc[0]['Data Realizada']).days_in_month,1):
+            visual_diario.loc[linha] = np.nan
 
-    for a,b in raw_data.iterrows():
+        raw_data.sort_values('Data Realizada', inplace=True)
 
-        if b['Data'] != dia:
-            constante=1
+        dia = 0
 
-        visual_diario.loc[pd.to_datetime(b['Data']).day,f'Valor {constante}']=b['Valor']
-        visual_diario.loc[pd.to_datetime(b['Data']).day,f'Provedor {constante}']=b['Provedor']
+        for a,b in raw_data.iterrows():
 
-        dia = b['Data']
-        constante+=1
+            if b['Frequência'] != 'Múltipla Temporária':
 
-    visual_diario.sort_index(inplace=True)
+                if b['Data Realizada'] != dia:
+                    constante=1
 
-    def color(val):
-        color = 'rgba(32, 135, 60, 0.5)' if val > 0 else ('rgba(135, 32, 32, 0.3)' if val < 0 else 'white')
-        return 'background-color: %s' % color
+                visual_diario.loc[pd.to_datetime(b['Data Realizada']).day,f'Valor {constante}']=b['Valor']
+                visual_diario.loc[pd.to_datetime(b['Data Realizada']).day,f'Provedor {constante}']=b['Provedor']
 
-    def weekend(val):
-        color = 'rgba(32, 135, 60, 0.5)' if val > 0 else ('rgba(135, 32, 32, 0.3)' if val < 0 else 'white')
-        return 'background-color: %s' % color
+                dia = b['Data Realizada']
+                constante+=1
 
-    import calendar
+            else:
+                pass
 
-    st.subheader(f'GASTOS DIÁRIOS DE {calendar.month_name[mes].upper()}/{ano} {texto}')
+        for a,b in raw_data.drop_duplicates('ID').iterrows():
 
-    st.dataframe(visual_diario.style.format(format_dict, na_rep='').applymap(color, subset=pd.IndexSlice[:, [vk for vk in format_dict.keys() if vk[0] == 'V']]).set_properties(**{'font-weight': 'bold','border-color': 'black'}), height=2000)
+            if b['Frequência'] == 'Múltipla Temporária':
+
+                if b['Data Realizada'] != dia:
+                    constante=1
+
+                visual_diario.loc[pd.to_datetime(b['Data Realizada']).day,f'Valor {constante}']=b['Valor']*int(b['Parcelamento'].split('/')[-1])
+                visual_diario.loc[pd.to_datetime(b['Data Realizada']).day,f'Provedor {constante}']=b['Provedor']
+
+                dia = b['Data Realizada']
+                constante+=1
+
+            else:
+                pass
+
+        visual_diario.sort_index(inplace=True)
+
+        def color(val):
+            color = 'rgba(32, 135, 60, 0.5)' if val > 0 else ('rgba(135, 32, 32, 0.3)' if val < 0 else 'white')
+            return 'background-color: %s' % color
+
+        def weekend(val):
+            color = 'rgba(32, 135, 60, 0.5)' if val > 0 else ('rgba(135, 32, 32, 0.3)' if val < 0 else 'white')
+            return 'background-color: %s' % color
+
+        import calendar
+
+        st.subheader(f'GASTOS DIÁRIOS DE {calendar.month_name[mes].upper()}/{ano} {texto}')
+
+        st.dataframe(visual_diario.style.format(format_dict, na_rep='').applymap(color, subset=pd.IndexSlice[:, [vk for vk in format_dict.keys() if vk[0] == 'V']]).set_properties(**{'font-weight': 'bold','border-color': 'black'}), height=2000)
+
+    except:
+        st.warning('Não há movimentações para serem mostradas!')
 
 def configuracoes():
 
