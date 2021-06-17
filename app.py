@@ -408,38 +408,27 @@ def antecipador():
 
         parcelas_possiveis = range(1,len(df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Parcelamento']),1)
 
-        parcela_comeco = int(df[(df['ID']==index_para_antecipar)]['Parcelamento'].values[0].split('/')[-1])
+        parcela_comeco = int(df[(df['ID']==index_para_antecipar)]['Parcelamento'].values[-1].split('/')[0])
 
-        i = 1
+        parcela_para_antecipar = st.selectbox('Indique quantas parcelas a serem antecipadas:', parcelas_possiveis)
 
-        lista_opcoes = []
+        id_parcelas = np.arange(parcela_comeco,parcela_comeco-parcela_para_antecipar,-1)
 
-        for a in parcelas_possiveis:
-            lista_opcoes.append(str((a, ' - referente à parcela', list(np.arange(parcela_comeco,parcela_comeco-i,-1)))))
-            i += 1
+        id_parcela_print = str(list(id_parcelas)).replace('[','').replace(']','')
 
-        trocas = {
-            "'": '',
-            ',': '',
-            '[': '',
-            ']': '',
-            '(': '',
-            ')': '',
-        }
+        dia = pd.to_datetime(df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Data']).dt.day.values[0]
+        mes = pd.to_datetime(df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Data']).dt.month_name().values[0]
+        ano = pd.to_datetime(df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Data']).dt.year.values[0]
 
-        for a,i in enumerate(lista_opcoes):
-            for crt_errado,crt_certo in trocas.items():
-                lista_opcoes[a] = lista_opcoes[a].replace(crt_errado, crt_certo)
+        st.warning(
+            f'Antecipando {parcela_para_antecipar} parcela(s), você movimentará a data financeira da(s) parcela(s) {id_parcela_print} para o dia {dia} de {mes} de {ano} (próximo pagamento agendado da movimentação {index_para_antecipar})!'
+        )
 
         with st.form('antecipador'):
-
-            parcela_para_antecipar = st.selectbox('Indique quantas parcelas a serem antecipadas:', lista_opcoes)
 
             valor = st.number_input(label='Indique o valor de desconto total em R$:', help='Caso você esteja adiantando apenas uma parcela, este valor será o desconto desta parcela. Caso seja mais de uma, somar todos os valores de desconto.')
 
             descricao = st.text_input(label='Descrição:')
-
-            #continuar daqui! fazer a transação de fato.
 
             if st.form_submit_button(label='Antecipar!'):
 
@@ -449,19 +438,36 @@ def antecipador():
                     ID = df['ID'].values[-1] + 1
 
                 df = df.append({'Data Cadastro': date.today(),
-                                'Data': data_financeira,
-                                'Data Realizada': data_financeira,
-                                'Fluxo': df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Fluxo'].values[0],
+                                'Data': df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Data'].values[0],
+                                'Data Realizada': df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Data'].values[0],
+                                'Fluxo': 'Entrada',
                                 'Frequência' : 'Antecipamento',
-                                'Valor' : valor if df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Fluxo'].values[0]=='Entrada' else -valor,
-                                'Instituição Financeira' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Instituição Financeira'].values[0],
-                                'Provedor' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))]['Provedor'].values[0],
-                                'Descrição': f'Parcela {parcela_para_antecipar} antecipada da movimentação {index_para_antecipar} - '+ descricao,
+                                'Valor' : valor,
+                                'Instituição Financeira' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento'].str.startswith(str(id_parcelas[0]))))]['Instituição Financeira'].values[0],
+                                'Provedor' : 'Antecipamento',
+                                'Descrição': f'Desconto provindo de antecipação da movimentação {index_para_antecipar} - '+ descricao,
                                 'ID': ID
                                 },
                                 ignore_index=True)
 
-                df.drop(df[((df['ID']==index_para_antecipar) & (df['Parcelamento']==parcela_para_antecipar))].index, inplace=True)
+                for criando_parcela in id_parcelas:
+
+                    df = df.append({'Data Cadastro': date.today(),
+                                    'Data': df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Data'].values[0],
+                                    'Data Realizada': df[((df['Data']>=date.today()) & (df['ID']==index_para_antecipar))]['Data'].values[0],
+                                    'Fluxo': 'Saída',
+                                    'Frequência' : 'Antecipamento',
+                                    'Valor' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento'].str.startswith(str(criando_parcela))))]['Valor'].values[0],
+                                    'Instituição Financeira' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento'].str.startswith(str(criando_parcela))))]['Instituição Financeira'].values[0],
+                                    'Provedor' : df[((df['ID']==index_para_antecipar) & (df['Parcelamento'].str.startswith(str(criando_parcela))))]['Provedor'].values[0],
+                                    'Descrição': f'Parcela {criando_parcela} antecipada da movimentação {index_para_antecipar} - '+ descricao,
+                                    'ID': ID
+                                    },
+                                    ignore_index=True)
+
+                    filtro = df['Parcelamento'].str.startswith(str(criando_parcela), na=False)
+
+                    df.drop(df[filtro].index, inplace=True)
 
                 df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
