@@ -14,13 +14,18 @@ from bokeh.models import HoverTool
 import bokeh.models as bkm
 import bokeh.plotting as bkp
 from bokeh.models import NumeralTickFormatter
-
+from bokeh.models import ColumnDataSource, DataRange1d, Plot, LinearAxis, Grid, Legend, LegendItem
 
 st.set_page_config(page_title='Financial History', page_icon="https://static.streamlit.io/examples/cat.jpg", layout='wide', initial_sidebar_state='auto')
 
 pd.options.display.float_format = '${:,.2f}'.format
 
 def carregar_dados():
+
+    """
+    Função que dá o refresh nos dados: sincroniza o aplicativo com o que está salvo no disco (no arquivo data.xlsx).
+    Se não existe o arquivo, esta função irá criá-lo.
+    """
 
     global df
 
@@ -40,9 +45,17 @@ def carregar_dados():
 
         file.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1") #crie este arquivo
 
-    data_parser = lambda x: pd.datetime.strptime(x[:10], '%Y-%m-%d')
+    #e então carregue este arquivo, sincronizar
 
-    df = pd.read_excel('sheets/data.xlsx', parse_dates=['Data','Data Cadastro','Data Realizada'], date_parser=data_parser, encoding="ISO-8859-1", engine='openpyxl') #e então carregue este arquivo
+    df = pd.read_excel(
+        'sheets/data.xlsx',
+        parse_dates=['Data','Data Cadastro','Data Realizada'],
+        date_parser=lambda x: pd.datetime.strptime(x[:10], '%Y-%m-%d'),
+        encoding="ISO-8859-1",
+        engine='openpyxl'
+    )
+
+    #e tente deixar as datas mais bonitas, tirando o nanossegundo
 
     try:
         df['Data'] = df['Data'].dt.date
@@ -53,17 +66,24 @@ def carregar_dados():
 
 def mostrar_dados():
 
+    """
+    Mostre os dados em qualquer página do aplicativo de forma opcional.
+    """
+
     with st.beta_expander('Mostrar meus dados'):
 
         carregar_dados()
 
-        mostrar_tudo = st.checkbox('Visualizar os dados por completo (mostrar também colunas auxiliares)', value=False)
+        mostrar_tudo = st.checkbox(
+            'Visualizar os dados por completo',
+            value=False,
+            help='Mostra também colunas auxiliares, que não importam tanto para o usuário final.')
 
         if mostrar_tudo:
 
             df['Valor'] = df['Valor'].map('{:,.2f}'.format)
 
-            st.write(df) #mostre que eles estão corretos
+            st.write(df)
 
         else:
 
@@ -73,47 +93,74 @@ def mostrar_dados():
 
 def cadastrar():
 
+    """
+    Função que insere os dados no arquivo data.xlsx.
+    """
+
     global df
 
-    carregar_dados()
+    carregar_dados() #inicialmente, certificar que estamos atualizados
 
-    fluxo = st.selectbox(label='Fluxo da movimentação: ', options=['', 'Entrada', 'Saída', 'Transferência'])
+    #e então perguntar qual é o fluxo da movimentação
 
-    #formulário de transferência
+    fluxo = st.selectbox(
+        label='Fluxo da movimentação: ',
+        options=['', 'Entrada', 'Saída', 'Transferência'],
+        help = 'Determine se a movimentação cadastrada será uma entrada, saída ou transferência de dinheiro no seu patrimônio.')
+
+    #se o fluxo for transferência, formulário de transferência
 
     if fluxo == 'Transferência':
 
         with st.form(key='Cadastre uma nova transferência'):
 
-            data_financeira = st.date_input(label='Data da movimentação: ')
+            data_financeira = st.date_input(
+                label = 'Data financeira:',
+                help = 'Data em que a movimentação foi/será consolidada pelas instituições financeiras.'
+            )
 
-            frequencia = 'Singular'
+            frequencia = 'Singular' #toda transferência é necessariamente singular.
 
-            valor = st.number_input(label='Valor (R$):')
+            valor = st.number_input(
+                label = 'Valor (R$)',
+                help = 'Valor da transação. O usuário não deve se preocupar com o sinal (+ ou -) da operação.'
+            )
 
             instituicao_financeira = st.selectbox(
-                label='Instituição Financeira (onde a quantia foi ou estava?)',
-                options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,'')
+                label='Instituição Financeira de partida',
+                options=np.insert(
+                    pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,
+                    0,
+                    ''
+                    ),
+                help = 'Lugar de onde a quantia será retirada.'
             )
 
             instituicao_financeira_2 = st.selectbox(
-                label='Para qual Instituição Financeira o valor foi destiando?',
-                options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,'')
+                label='Instituição Financeira destinada',
+                options=np.insert(
+                    pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,
+                    0,
+                    ''
+                    ),
+                help = 'Lugar para onde a quantia será enviada.'
             )
 
             data_cadastro = date.today()
+
+            #botão que efetua o cadastro da transação
 
             if st.form_submit_button(label='Cadastrar!'):
 
                 provedor = None
                 descricao = None
 
-                #saída de um banco para outro
-
                 if len(df['ID'].dropna()) == 0:
                     ID = 0
                 else:
                     ID = df['ID'].values[-1] + 1
+
+                #saida do instituição financeira 1
 
                 df = df.append({'Data Cadastro': data_cadastro,
                                 'Data': data_financeira,
@@ -130,7 +177,7 @@ def cadastrar():
 
                 df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
-                #chegada de um banco para o outro
+                #saida do instituição financeira 2
 
                 df = df.append({'Data Cadastro': data_cadastro,
                                 'Data': data_financeira,
@@ -149,17 +196,20 @@ def cadastrar():
 
                 st.success(f'Movimentação (ID {ID}) cadastrada!')
 
+    #se o fluxo for entrada ou saida, formulário de entrada ou saída
+
     elif ((fluxo == 'Entrada') | (fluxo == 'Saída')):
 
         if fluxo == 'Entrada':
-            texto_inst_fin = 'em qual banco o valor entrará?'
+            texto_inst_fin = 'Em qual banco o valor entrará?'
         else:
-            texto_inst_fin = 'em qual banco o valor sairá?'
+            texto_inst_fin = 'Em qual banco o valor sairá?'
 
 
         frequencia = st.selectbox(
             label='Frequência da movimentação: ',
-            options=['','Singular', 'Múltipla Temporária', 'Múltipla Permanente']
+            options=['','Singular', 'Múltipla Temporária', 'Múltipla Permanente'],
+            help = 'Determine se a movimentação é um Múltipla Temporária (p.ex. parcelamento), Singular (p.ex. esporádia) ou Múltipla Permanente (p.ex. mensalidade ou salário)'
         )
 
         #formulário de parcelamentos
@@ -168,34 +218,51 @@ def cadastrar():
 
             with st.form(key='Cadastre uma nova movimentação'):
 
-                data_financeira = st.date_input(label='Data financeira da movimentação (primeiro dia em que a entrada/saída será efetivada): ')
+                data_financeira = st.date_input(
+                    label = 'Data financeira:',
+                    help = 'Data em que a movimentação foi/será consolidada pela instituição financeira - (primeiro dia em que a entrada/saída será efetivada).'
+                )
 
-                data_realizada = st.date_input(label='Data de realização da movimentação (dia em que a movimentaçã foi realizada): ')
+                data_realizada = st.date_input(
+                    label='Data de realização:',
+                    help = 'Data em que a movimentação foi/será efetuada pelo usuário - (dia em que a movimentação foi realizada de fato).'
+                )
 
                 parcelamento = st.text_input(label='Indique em quantas vezes o valor foi parcelado:', value='0')
                 parcelamento = int(parcelamento)
 
-                valor = st.number_input(label='Valor (R$):')
+                valor = st.number_input(
+                    label='Valor (R$):',
+                    help='Valor total da movimentação. O usuário NÃO deve inserir o valor da parcela da movimentação.'
+                )
 
                 instituicao_financeira = st.selectbox(
-                    label=f'Instituição Financeira ({texto_inst_fin})',
-                    options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,'')
+                    label=f'Instituição Financeira',
+                    options=np.insert(
+                        pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,
+                        0,
+                        ''
+                        ),
+                    help = texto_inst_fin
                 )
 
                 provedor = st.selectbox(
-                    label = 'Provedor (o que foi responsável pela movimentação?):',
+                    label = 'Provedor:',
                     options = np.insert(
-                        pd.read_csv(f"listas/provedores_entrada.csv", encoding="ISO-8859-1").values,0,'') if fluxo == 'Entrada' else np.insert(pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values,0,''
-                        )
-                    )
+                        pd.read_csv(
+                            f"listas/provedores_entrada.csv", encoding="ISO-8859-1").values,0,'') if fluxo == 'Entrada' else np.insert(pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values,0,''
+                        ),
+                    help = 'Qual foi o motivo responsável pela movimentação? Como o usuário classificaria sua compra?'
+                )
 
-                descricao = st.text_input(label='Descrição:')
+                descricao = st.text_input(
+                    label='Descrição:',
+                    help='Campo livre para inserção de textos.'
+                )
 
                 data_cadastro = date.today()
 
                 if st.form_submit_button(label='Cadastrar!'):
-
-                    #olhar para o meu df e ver qual é o último parcelamento, nomear este como o último + 1
 
                     if len(df['ID'].dropna()) == 0:
                         ID = 0
@@ -232,24 +299,37 @@ def cadastrar():
 
             with st.form(key='Cadastre uma nova movimentação'):
 
-                data_financeira = st.date_input(label='Data financeira da movimentação (primeiro dia em que a entrada/saída será efetivada, repetirá mensalmente): ')
+                data_financeira = st.date_input(
+                    label='Data financeira:',
+                    help = 'Data em que a movimentação foi/será consolidada pela instituição financeira - (primeiro dia em que a entrada/saída será efetivada). REPETIÇÕES MENSAIS.'
+                )
 
                 tempo = st.text_input(label='Indique em meses (aproximadamente) quanto tempo esta movimentação perdurará:', value='0')
                 tempo = int(tempo)
 
-                valor = st.number_input(label='Valor (R$):')
+                valor = st.number_input(
+                    label='Valor (R$):',
+                    help='O usuário deve inserir o valor da parcela da compra (p.ex. o valor do salário).'
+                )
 
                 instituicao_financeira = st.selectbox(
-                    label=f'Instituição Financeira ({texto_inst_fin})',
-                    options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,'')
+                    label=f'Instituição Financeira:',
+                    options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,''),
+                    help = texto_inst_fin
                 )
 
                 provedor = st.selectbox(
-                    label = 'Provedor (o que foi responsável pela movimentação?):',
-                    options = np.insert(pd.read_csv(f"listas/provedores_entrada.csv", encoding="ISO-8859-1").values,0,'') if fluxo == 'Entrada' else np.insert(pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values,0,'')
+                    label = 'Provedor',
+                    options = np.insert(
+                        pd.read_csv(f"listas/provedores_entrada.csv", encoding="ISO-8859-1").values,0,'') if fluxo == 'Entrada' else np.insert(pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values,0,''
+                        ),
+                    help = 'Qual foi o motivo responsável pela movimentação? Como o usuário classificaria sua compra?'
                     )
 
-                descricao = st.text_input(label='Descrição:')
+                descricao = st.text_input(
+                    label='Descrição:',
+                    help='Campo livre para inserção de textos.'
+                )
 
                 data_cadastro = date.today()
 
@@ -262,7 +342,7 @@ def cadastrar():
 
                     data_financeira_trabalhada = data_financeira
 
-                    for registro in range(1,tempo+1,1): #vou cadastrar para até 3 anos para frente
+                    for registro in range(1,tempo+1,1):
 
                         df = df.append({'Data Cadastro': data_cadastro,
                                         'Data': data_financeira_trabalhada,
@@ -285,27 +365,47 @@ def cadastrar():
 
         #formulário de singulares
 
-        elif frequencia == 'Singular': #se for um registro singular:
+        elif frequencia == 'Singular':
 
             with st.form(key='Cadastre uma nova movimentação'):
 
-                data_financeira = st.date_input(label='Data financeira da movimentação (dia em que a entrada/saída será efetivada): ')
+                data_financeira = st.date_input(
+                    label='Data financeira:',
+                    help = 'Data em que a movimentação foi/será consolidada pela instituição financeira (dia do pagamento da fatura, se realizada no cartão de crédito).'
+                )
 
-                data_realizada = st.date_input(label='Data de realização da movimentação (dia em que a movimentaçã foi realizada): ')
+                data_realizada = st.date_input(
+                    label='Data de realização: ',
+                    help = 'Data em que a movimentação foi/será efetuada pelo usuário - (dia em que a movimentação foi realizada de fato).'
+                )
 
-                valor = st.number_input(label='Valor (R$):')
+                valor = st.number_input(
+                    label='Valor (R$):',
+                    help='Valor total da movimentação.'
+                )
 
                 instituicao_financeira = st.selectbox(
-                    label=f'Instituição Financeira ({texto_inst_fin})',
-                    options=np.insert(pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,0,'')
+                    label=f'Instituição Financeira:',
+                    options=np.insert(
+                        pd.read_csv(f"listas/instituicoes_financeiras.csv", encoding="ISO-8859-1").values,
+                        0,
+                        ''
+                    ),
+                    help = texto_inst_fin
                 )
 
                 provedor = st.selectbox(
                     label = 'Provedor (o foi responsável pela movimentação?):',
-                    options = np.insert(pd.read_csv(f"listas/provedores_entrada.csv", encoding="ISO-8859-1").values,0,'') if fluxo == 'Entrada' else np.insert(pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values,0,'')
-                    )
+                    options = np.insert(
+                        pd.read_csv(f"listas/provedores_entrada.csv", encoding="ISO-8859-1").values,0,'') if fluxo == 'Entrada' else np.insert(pd.read_csv(f"listas/provedores_saida.csv", encoding="ISO-8859-1").values,0,''
+                    ),
+                    help = 'Qual foi o motivo responsável pela movimentação? Como o usuário classificaria sua compra?'
+                )
 
-                descricao = st.text_input(label='Descrição:')
+                descricao = st.text_input(
+                    label='Descrição:',
+                    help='Campo livre para inserção de textos.'
+                )
 
                 data_cadastro = date.today()
 
@@ -335,19 +435,37 @@ def cadastrar():
 
 def excluir():
 
+    """
+    Função que exclui uma movimentação caso o usuário tenha se equivocado.
+    """
+
     global df
 
     carregar_dados()
 
-    exclusao_retroativa = st.checkbox(label='Permitir a exclusão retroativa', value=False, help='Caso marcado, as movimentações que ocorreram até o dia atual também poderão ser excluídas.')
+    st.warning('ATENÇÃO: CASO O USUÁRIO DESEJE EXCLUIR MAIS DE UMA MOVIMENTAÇÃO EM SEQUÊNCIA, SAIR E VOLTAR PARA ESTA PÁGINA.')
 
-    tipo_exclusao = st.selectbox('Excluir por...', ['', 'Index (número mais à esquerda da tabela, identificação única)', 'ID'])
+    exclusao_retroativa = st.checkbox(
+        label='Permitir a exclusão retroativa',
+        value=False,
+        help='Caso marcado, as movimentações que ocorreram até o dia atual (ou seja, que teoricamente já foram liquidadas) também poderão ser excluídas.'
+    )
+
+    tipo_exclusao = st.selectbox(
+        'Excluir por...', ['', 'Index (número mais à esquerda da tabela, identificação única)', 'ID'],
+        help = 'O usuário pode excluir por ID (identificação que aglomera todos movimentos de uma movimentação) ou Index (número mais à esquerda na tabela (ver "Mostrar meus dados").'
+
+    )
 
     if tipo_exclusao == 'ID':
 
         with st.form(key = 'excluir por id'):
 
-            index_para_excluir = st.selectbox('Indique a ID da movimentação a ser excluída:', df['ID'].unique() if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].unique())
+            index_para_excluir = st.selectbox(
+                'Indique a ID da movimentação a ser excluída:',
+                df['ID'].unique() if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].unique(),
+                help = 'Verificar em "Mostrar meus dados"!'
+            )
 
             index_para_excluir = int(index_para_excluir)
 
@@ -377,7 +495,11 @@ def excluir():
 
         with st.form(key = 'excluir por index'):
 
-            index_para_excluir = st.selectbox('Indique o Index da movimentação a ser excluída:', df.index if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].index)
+            index_para_excluir = st.selectbox(
+                'Indique o Index da movimentação a ser excluída:',
+                df.index if exclusao_retroativa else df[df['Data']>=date.today()]['ID'].index,
+                help = 'Verificar em "Mostrar meus dados"!'
+                )
 
             index_para_excluir = int(index_para_excluir)
 
@@ -391,6 +513,10 @@ def excluir():
 
 def antecipador():
 
+    """
+    Função que antecipa parcelas futuras.
+    """
+
     global df
 
     carregar_dados()
@@ -398,11 +524,13 @@ def antecipador():
     #selecionar apenas as compras com parcelas no futuro:
 
     index_para_antecipar = st.selectbox(
-        'Indique a ID da movimentação que terá uma parcela a ser antecipada:',
+        'Indique a ID da movimentação que terá parcela(s) a ser(em) antecipada(s):',
         np.insert(
             (df[((df['Data']>=date.today()) & (df['Frequência']=='Múltipla Temporária'))]['ID'].unique()).astype(str),
             0,
-            '')
+            ''
+        ),
+        help = 'O usuário só poderá escolher as parcelas com datas de débito futuras.'
     )
 
     if index_para_antecipar != '':
@@ -429,9 +557,15 @@ def antecipador():
 
         with st.form('antecipador'):
 
-            valor = st.number_input(label='Indique o valor de desconto total em R$:', help='Caso você esteja adiantando apenas uma parcela, este valor será o desconto desta parcela. Caso seja mais de uma, somar todos os valores de desconto.')
+            valor = st.number_input(
+                label='Indique o valor de desconto total em R$:',
+                help='Caso você esteja adiantando apenas uma parcela, este valor será o desconto desta parcela. Caso seja mais de uma, somar todos os valores de desconto.'
+            )
 
-            descricao = st.text_input(label='Descrição:')
+            descricao = st.text_input(
+                label='Descrição:',
+                help='Campo livre para inserção de textos.'
+            )
 
             if st.form_submit_button(label='Antecipar!'):
 
@@ -481,6 +615,10 @@ def antecipador():
 
 def atualizar_dados():
 
+    """
+    Função que sincroniza os dados com a última publicação do GitHub.
+    """
+
     st.error("Cuidado! Se você atualizar os seus dados, todas informações serão sincronizadas com os arquivos relacionados à última publicação (em 'Publicar dados').")
 
     if st.checkbox('Eu estou ciente do caminho perigoso que posso estar tomando!'):
@@ -499,6 +637,10 @@ def atualizar_dados():
 
 def publicar_dados():
 
+    """
+    Função que sincroniza os dados com o GitHub.
+    """
+
     st.error('Cuidado! Se você publicar os seus dados, as informações serão sobrescritas no servidor e não haverá como recuperar os arquivos antigos (a não ser que você tenha salvado manualmente um backup no seu computador).')
 
     if st.checkbox('Eu estou ciente do caminho perigoso que posso estar tomando!'):
@@ -515,6 +657,10 @@ def publicar_dados():
             st.balloons()
 
 def dados_com_filtros():
+
+    """
+    Função que mostra o arquivo data.xlsx de forma filtrada.
+    """
 
     opcao_de_filtro = st.radio('Qual informação você deseja filtrar?', ['Selecionar','Sem filtro', 'Datas', 'Fluxo', 'Provedor', 'Instituição Financeira', 'ID'])
 
@@ -620,6 +766,10 @@ def dados_com_filtros():
 
 def conferir_cadastros():
 
+    """
+    Função que mostra ao usuário de forma mais concreta as movimentações cadastradas num determinado dia.
+    """
+
     data_registrada = st.selectbox('Selecione a data de cadastro:', np.append(df['Data Cadastro'].unique(), values='Sem Filtro'))
 
     if data_registrada == 'Sem Filtro':
@@ -688,16 +838,10 @@ def conferir_cadastros():
 
                     st.markdown(
                             """
-                            {} - Movimentação de antecipação da parcela {} da movimentação de ID {} de <span style="color:rgb(6, 191, 0);font-size:larger">**R$ {}**</span>, agora creditado dia {} de {} de {} na conta {}.
+                            {} - Movimentação de antecipação (ID {}).
                             """.format(
                              contador,
-                             row['Descrição'].split(' ')[1],
-                             row['Descrição'].split(' ')[5],
-                             row['Valor'], #isso é o valor vezes o número de parcelas
-                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.values[0],
-                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().values[0],
-                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.values[0],
-                             row['Instituição Financeira']
+                             row['Descrição'].split(' ')[6],
                              ), True
                         )
 
@@ -755,16 +899,10 @@ def conferir_cadastros():
 
                     st.markdown(
                             """
-                            {} - Movimentação de antecipação da parcela {} da movimentação de ID {} de <span style="color:rgb(255, 15, 0);font-size:larger">**R$ {}**</span>, agora debitado dia {} de {} de {} na conta {}.
+                            {} - Movimentação de antecipação (ID {}).
                             """.format(
                              contador,
-                             row['Descrição'].split(' ')[1],
-                             row['Descrição'].split(' ')[5],
-                             row['Valor'], #isso é o valor vezes o número de parcelas
-                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.day.values[0],
-                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.month_name().values[0],
-                             pd.to_datetime(df[df['ID'] == row['ID']]['Data']).dt.year.values[0],
-                             row['Instituição Financeira']
+                             row['Descrição'].split(' ')[6],
                              ), True
                         )
 
@@ -791,11 +929,17 @@ def conferir_cadastros():
 
 def fluxo_de_caixa():
 
+    """
+    Função que mostra ao usuários seus dados de forma tradicional no meio contábil.
+    """
+
     df['Data'] = pd.to_datetime(df['Data']) #NÃO funciona com date apenas, precisa ser datetime... putarias do pandas;
 
     range = st.radio('Selecione o range do Fluxo de Caixa:', ['Selecionar', 'Mensal', 'Anual'], index=2)
 
-    provisoes = st.checkbox('Mostrar provisões')
+    provisoes = st.checkbox(
+        'Mostrar provisões',
+        help='Caso marcado, o usuário visualizará as provisões criadas nas "Configurações". Atenção: as provisões são adicionas apenas no mês seguinte em relação ao atual.')
 
     m_indx = []
 
@@ -843,8 +987,6 @@ def fluxo_de_caixa():
             )
             ]['Data'].sort_values().dt.strftime('%Y-%m').unique()
         )
-
-        #st.write(datas_para_colocar_prov)
 
         for index,row in pd.read_csv(f"listas/provisionar.csv", encoding="ISO-8859-1", sep=';').iterrows():
 
@@ -950,11 +1092,13 @@ def fluxo_de_caixa():
 
     acumulado = st.checkbox('Visualizar linha de saldo acumulado', True)
 
-    teste = table.T
+    table_t = table.T
 
-    teste.replace(0,np.nan, inplace=True)
+    table_t.replace(0,np.nan, inplace=True)
 
-    teste.columns = teste.columns.map(''.join).str.strip('')
+    table_t.columns = table_t.columns.map(''.join).str.strip('')
+
+    #o bokeh nao gosta nada de acentos.
 
     trocas = {
         'á': 'a',
@@ -972,30 +1116,30 @@ def fluxo_de_caixa():
         ' ': ''
     }
 
-    for coluna in teste.columns:
+    for coluna in table_t.columns:
         coluna_corrigida = coluna
         for crt_errado,crt_certo in trocas.items():
             coluna_corrigida = coluna_corrigida.lower().replace(crt_errado, crt_certo)
 
-        teste = teste.rename(
+        table_t = table_t.rename(
                 {
                 f'{coluna}': f'{coluna_corrigida}'
                 },
             axis='columns'
             )
 
-    teste.index = teste.index.map(str)
+    table_t.index = table_t.index.map(str)
 
-    for cr_pct in teste.columns:
+    for cr_pct in table_t.columns:
         if cr_pct[0] == 'e':
-            teste['pct'+cr_pct] = teste[cr_pct]/teste['totalentrada']
+            table_t['pct'+cr_pct] = table_t[cr_pct]/table_t['totalentrada']
 
         elif cr_pct[0] == 's':
-            teste['pct'+cr_pct] = teste[cr_pct]/teste['totalsaida']
+            table_t['pct'+cr_pct] = table_t[cr_pct]/table_t['totalsaida']
         else:
             pass
 
-    source = bkm.ColumnDataSource(data=teste)
+    source = bkm.ColumnDataSource(data=table_t)
 
     p = bkp.figure(
         x_range=x_axis,
@@ -1139,14 +1283,6 @@ def fluxo_de_caixa():
     p.xaxis.major_label_text_font_size = '12pt'
     p.yaxis.major_label_text_font_size = '12pt'
 
-    from bokeh.models import ColumnDataSource, DataRange1d, Plot, LinearAxis, Grid, Legend, LegendItem
-
-    #li1 = LegendItem(label='red', renderers=[p.renderers[0]])
-    #li2 = LegendItem(label='blue', renderers=[p.renderers[1]])
-    #li3 = LegendItem(label='purple', renderers=[p.renderers[2]])
-    #legend1 = Legend(items=[li1, li2, li3], location='top_right')
-    #p.add_layout(legend1)
-
     st.bokeh_chart(
         p,
         use_container_width=True
@@ -1157,6 +1293,10 @@ def fluxo_de_caixa():
         st.dataframe(table.applymap('{:,.2f}'.format), height=1000)
 
 def visual_diario():
+
+    """
+    Função que mostra ao usuário seus dados de forma diária, baseando no dia em que as movimentações foram realizadas (e não faturadas).
+    """
 
     try:
 
@@ -1275,7 +1415,8 @@ def configuracoes():
     file = ''
 
     config = st.selectbox('Configurar...',
-        ['Selecionar uma opção', 'Instituições Financeiras', 'Provedores', 'Provisionar']
+        ['Selecionar uma opção', 'Instituições Financeiras', 'Provedores', 'Provisionar'],
+        help='Configure as listas que serão sugeridas nas horas de cadastramento de movimentações ou as provisões que serão dispostas na visualização.'
     )
 
     if config == 'Instituições Financeiras':
@@ -1366,100 +1507,105 @@ def configuracoes():
 
             st.write(arquivo)
 
-st.sidebar.title("""
+def main ():
 
-Financial History
+    st.sidebar.title("""
 
-""")
+    Financial History
 
-st.sidebar.image(Image.open('img/logo3.png'), output_format='png', width=300, )
+    """)
 
-st.sidebar.markdown("### Selecione uma das opções")
+    st.sidebar.image(Image.open('img/logo3.png'), output_format='png', width=300, )
 
-st.markdown(
-    """ <style>
-            div[role="radiogroup"] >  :first-child{
-                display: none !important;
-            }
-        </style>
-        """,
-    unsafe_allow_html=True
-)
+    st.sidebar.markdown("### Selecione uma das opções")
 
-menu = st.sidebar.radio('', ['Selecione uma opção no menu ao lado!', 'Modificar os dados', 'Visualizar os dados', 'Configurações'])
+    st.markdown(
+        """ <style>
+                div[role="radiogroup"] >  :first-child{
+                    display: none !important;
+                }
+            </style>
+            """,
+        unsafe_allow_html=True
+    )
 
-st.markdown(f"# **{menu}**")
+    menu = st.sidebar.radio('', ['Selecione uma opção no menu ao lado!', 'Modificar os dados', 'Visualizar os dados', 'Configurações'])
 
-if menu == 'Modificar os dados':
+    st.markdown(f"# **{menu}**")
 
-    carregar_dados() #carregue ou crie os dados
+    if menu == 'Modificar os dados':
 
-    st.sidebar.markdown("#### **O que você deseja fazer?**")
+        carregar_dados() #carregue ou crie os dados
 
-    opcoes_primarias = st.sidebar.radio(
-        label='',
-        options = (
-            'Selecione mais uma opção no menu ao lado!',
-            'Cadastrar uma movimentação',
-            'Excluir uma movimentação',
-            'Antecipar uma parcela',
-            'Atualizar dados',
-            'Publicar dados'),
-        )
+        st.sidebar.markdown("#### **O que você deseja fazer?**")
 
-    st.markdown(f"## **{opcoes_primarias}**")
+        opcoes_primarias = st.sidebar.radio(
+            label='',
+            options = (
+                'Selecione mais uma opção no menu ao lado!',
+                'Cadastrar uma movimentação',
+                'Excluir uma movimentação',
+                'Antecipar uma parcela',
+                'Atualizar dados',
+                'Publicar dados'),
+            )
 
-    if opcoes_primarias == 'Atualizar dados':
-        atualizar_dados()
+        st.markdown(f"## **{opcoes_primarias}**")
 
-    elif opcoes_primarias == 'Cadastrar uma movimentação':
-        cadastrar()
-        mostrar_dados()
+        if opcoes_primarias == 'Atualizar dados':
+            atualizar_dados()
 
-    elif opcoes_primarias == 'Excluir uma movimentação':
-        excluir()
-        mostrar_dados()
+        elif opcoes_primarias == 'Cadastrar uma movimentação':
+            cadastrar()
+            mostrar_dados()
 
-    elif opcoes_primarias == 'Antecipar uma parcela':
-        antecipador()
-        mostrar_dados()
+        elif opcoes_primarias == 'Excluir uma movimentação':
+            excluir()
+            mostrar_dados()
 
-    elif opcoes_primarias == 'Publicar dados':
-        publicar_dados()
+        elif opcoes_primarias == 'Antecipar uma parcela':
+            antecipador()
+            mostrar_dados()
 
-elif menu == 'Visualizar os dados':
+        elif opcoes_primarias == 'Publicar dados':
+            publicar_dados()
 
-    carregar_dados()
+    elif menu == 'Visualizar os dados':
 
-    st.sidebar.markdown("#### **O que você deseja fazer?**")
+        carregar_dados()
 
-    opcoes_secundarias = st.sidebar.radio(
-        label = '',
-        options = (
-            'Selecione mais uma opção no menu ao lado!',
-            'Conferir cadastros',
-            'Dados com filtros',
-            'Fluxo de caixa',
-            'Visualização diária'),
-        )
+        st.sidebar.markdown("#### **O que você deseja fazer?**")
 
-    st.markdown(f"## **{opcoes_secundarias}**")
+        opcoes_secundarias = st.sidebar.radio(
+            label = '',
+            options = (
+                'Selecione mais uma opção no menu ao lado!',
+                'Conferir cadastros',
+                'Dados com filtros',
+                'Fluxo de caixa',
+                'Visualização diária'),
+            )
 
-    if opcoes_secundarias == 'Conferir cadastros':
-        conferir_cadastros()
-        mostrar_dados()
+        st.markdown(f"## **{opcoes_secundarias}**")
 
-    elif opcoes_secundarias == 'Dados com filtros':
-        dados_com_filtros()
-        mostrar_dados()
+        if opcoes_secundarias == 'Conferir cadastros':
+            conferir_cadastros()
+            mostrar_dados()
 
-    elif opcoes_secundarias == 'Fluxo de caixa':
-        fluxo_de_caixa()
+        elif opcoes_secundarias == 'Dados com filtros':
+            dados_com_filtros()
+            mostrar_dados()
 
-    elif opcoes_secundarias == 'Visualização diária':
-        visual_diario()
+        elif opcoes_secundarias == 'Fluxo de caixa':
+            fluxo_de_caixa()
+
+        elif opcoes_secundarias == 'Visualização diária':
+            visual_diario()
 
 
-elif menu == 'Configurações':
+    elif menu == 'Configurações':
 
-    configuracoes()
+        configuracoes()
+
+if __name__ == '__main__':
+    main()
