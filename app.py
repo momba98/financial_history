@@ -399,7 +399,10 @@ def antecipador():
 
     index_para_antecipar = st.selectbox(
         'Indique a ID da movimentação que terá uma parcela a ser antecipada:',
-        np.insert((df[((df['Data']>=date.today()) & (df['Frequência']=='Múltipla Temporária'))]['ID'].unique()).astype(str),0,'')
+        np.insert(
+            (df[((df['Data']>=date.today()) & (df['Frequência']=='Múltipla Temporária'))]['ID'].unique()).astype(str),
+            0,
+            '')
     )
 
     if index_para_antecipar != '':
@@ -465,14 +468,16 @@ def antecipador():
                                     },
                                     ignore_index=True)
 
-                    filtro = df['Parcelamento'].str.startswith(str(criando_parcela), na=False)
+                    filtro = (
+                        (df['Parcelamento'].str.startswith(str(criando_parcela), na=False)) &
+                        (df['ID'] == index_para_antecipar)
+                    )
 
                     df.drop(df[filtro].index, inplace=True)
 
                 df.to_excel('sheets/data.xlsx', index=False, encoding="ISO-8859-1")
 
                 st.success('Movimentação realizada com sucesso!')
-
 
 def atualizar_dados():
 
@@ -1167,6 +1172,7 @@ def visual_diario():
             texto = '- ' + ifescolhida.upper()
 
         else:
+
             filtro = df==df
 
             texto = ''
@@ -1180,7 +1186,7 @@ def visual_diario():
 
         mes = col2.selectbox(
             'Selecione o mês para visualização:',
-            np.sort(pd.to_datetime(df[filtro][pd.to_datetime(df[filtro]['Data Realizada']).dt.year==ano]['Data']).dt.month.unique())
+            np.sort(pd.to_datetime(df[filtro][pd.to_datetime(df[filtro]['Data Realizada']).dt.year==ano]['Data Realizada']).dt.month.unique())
         )
 
         format_dict = {}
@@ -1212,7 +1218,8 @@ def visual_diario():
 
         for a,b in raw_data.iterrows():
 
-            if b['Frequência'] != 'Múltipla Temporária':
+            if b['Frequência'] != 'Múltipla Temporária' and \
+               b['Frequência'] != 'Antecipamento':
 
                 if b['Data Realizada'] != dia:
                     constante=1
