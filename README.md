@@ -33,12 +33,15 @@ Com financial_history, o usuário consegue **controlar suas movimentações fina
 
 3. **Configurações**
 	Área destinada para uniformização e personalização dos dados. 
+	> :warning: **A primeira ação de um usuário iniciante no software é criar suas listas de opções nesta aba!**
 
     3.1 **Configurar Instituições Financeiras:** neste campo, o usuário consegue informar ao software todas as formas de armazenar dinheiro que ele deseja.
 
     3.2 **Configurar Provedores:** neste campo, o usuário consegue informar ao software todas as formas de explicar as movimentações que ele deseja.
 
     3.3 **Configurar Provisões:** neste campo, o usuário consegue informar ao software todas as provisões que possui.
+
+> O software foi feito para facilitar a manipulação das movimentações financeiras. Porém, caso o usuário ache conveniente, o arquivo `dados.xlsx` pode ser manipulado manualmente também.
 
 **Instruções de utilização:**
 
