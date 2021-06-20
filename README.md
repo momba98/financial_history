@@ -6,10 +6,9 @@ Sistema de gestão financeira pessoal.
 
 1. Modificar os dados
 
-Área destinada para manipulação do banco de dados do usuário - onde toda e qualquer movimentação será criada, alterada ou excluída.
+	Área destinada para manipulação do banco de dados do usuário - onde toda e qualquer movimentação será criada, alterada ou excluída.
 
     1.1 Cadastrar uma movimentação
-
 
     1.2 Excluir uma movimentação
 
