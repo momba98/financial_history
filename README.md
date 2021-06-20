@@ -5,22 +5,35 @@ Sistema de gestão financeira pessoal.
 **Com financial_history o usuário pode:**
 
 1. Modificar os dados
+
     1.1 Cadastrar uma movimentação
+
     1.2 Excluir uma movimentação
+
     1.3 Antecipar uma parcela
+
     1.4 Atualizar os dados
+
     1.5 Publicar os dados
 
 2. Visualizar os dados
+
     2.1 Conferir cadastros
+
     2.2 Dados com filtros
+
     2.3 Fluxo de caixa
+
     2.4 Visualização diária
 
 3. Configurações
+
     3.1 Configurar Instituições Financeiras
+
     3.2 Configurar Provedores
+
     3.3 Configurar Provisões
+
 
 **Instruções de utilização:**
 
