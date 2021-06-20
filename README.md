@@ -41,8 +41,6 @@ Com financial_history, o usuário consegue **controlar suas movimentações fina
 
     3.3 **Configurar Provisões:** neste campo, o usuário consegue informar ao software todas as provisões que possui.
 
-> O software foi feito para facilitar a manipulação das movimentações financeiras. Porém, caso o usuário ache conveniente, o arquivo `dados.xlsx` pode ser manipulado manualmente também.
-
 **Instruções de utilização:**
 
 1. Baixe o repositório e possuir o software [Anaconda (com Python versão 3.8)](https://repo.anaconda.com/archive/Anaconda3-2021.05-Windows-x86_64.exe) instalado em seu computador.
@@ -50,3 +48,5 @@ Com financial_history, o usuário consegue **controlar suas movimentações fina
 2. Instale os pacotes requisitados com o comando no prompt `pip install -r requirements.txt` (ir até a pasta com o repositório baixado com o Explorador de Arquivos e digitar `cmd` no browser). **DEPOIS DE DIGITAR O CÓDIGO APERTAR ENTER!**
 
 3. Abrir o arquivo `Financial History` e começar utilizar!
+
+> O software foi feito para facilitar a manipulação das movimentações financeiras. Porém, caso o usuário ache conveniente, o arquivo `dados.xlsx` pode ser manipulado manualmente também.
